@@ -1,67 +1,158 @@
-BuyBlink is a modern dual-mode e-commerce platform that allows users to purchase products in Retail (single purchase) or Wholesale (bulk purchase) mode. It also includes a Seller Dashboard where sellers can manage their store products using a complete CRUD system.
+# React + Vite
 
-The project demonstrates the core functionality of a real-world e-commerce frontend, including product browsing, cart management, checkout, payment interface, and order history.
-Features
-Authentication
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-Seller Signup and Login
+Currently, two official plugins are available:
 
-Protected Seller Dashboard
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-Persistent login using LocalStorage
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+BuyBlink – Retail & Wholesale E-Commerce Platform
+Project Overview
+
+BuyBlink is a modern dual-mode e-commerce platform that allows users to purchase products either individually (Retail) or in bulk (Wholesale). The platform also includes a Seller Dashboard where sellers can manage their products using a complete CRUD system.
+
+The project demonstrates the complete frontend architecture of an e-commerce marketplace, including product browsing, cart management, checkout, payment selection, and order history.
+
+Currently the application uses LocalStorage for data persistence, but the architecture is designed so it can easily be connected to a backend API and database.
+
+Key Features
+Authentication System
+
+Seller registration
+
+Seller login
+
+Protected dashboard access
+
+Session persistence using LocalStorage
 
 Seller Dashboard
 
-Add Products
+Sellers can manage their store through a dashboard interface.
 
-Edit Products
+Features include:
 
-Delete Products
+Add Product
+
+Edit Product
+
+Delete Product
 
 Product listing table
 
-Product search functionality
+Image preview
+
+Search products
 
 Product Marketplace
 
-Retail and Wholesale product display
+Users can browse products through a clean product grid.
 
-Product image preview
+Each product card includes:
 
-Product card with pricing details
+Product image
 
-Minimum quantity rule for wholesale orders
+Product description
+
+Retail price
+
+Wholesale price
+
+Minimum wholesale quantity
+
+Rating display
+
+Discount badge
+
+Wishlist toggle
+
+Quick action buttons
+
+Retail & Wholesale Modes
+
+BuyBlink supports two purchasing modes:
+
+Retail Mode
+
+Users buy single products
+
+Standard retail price
+
+Wholesale Mode
+
+Users buy bulk quantities
+
+Discounted wholesale pricing
+
+Minimum quantity requirement
 
 Cart System
 
+Users can manage products inside the cart.
+
+Features include:
+
 Add to cart
 
-Remove items
+Remove item
 
-Update product quantity
+Update quantity
 
-Persistent cart using LocalStorage
-
-Dynamic cart count in navbar
-
-Checkout System
-
-Shipping details form
+Persistent cart storage
 
 Order summary calculation
 
-Payment method selection
+Checkout System
 
-Order Management
+The checkout process includes multiple steps:
 
-Order success confirmation page
+Cart Page
 
-Order history page
+Shipping Details Form
 
-Technology Stack
+Payment Method Selection
 
-Frontend: React (Vite)
-Styling: Tailwind CSS
-Routing: React Router DOM
-State Management: React Context API
-Data Storage: LocalStorage
+Order Confirmation
+
+Payment Page
+
+Users can select a payment method such as:
+
+UPI
+
+Debit / Credit Card
+
+Cash on Delivery
+
+Currently this is a mock payment UI, but it is designed so it can easily integrate with real payment gateways such as:
+
+Razorpay
+
+Stripe
+
+Order Success Page
+
+After payment confirmation the user sees an order success message and can continue shopping.
+
+Order History Page
+
+Users can view their previous orders including:
+
+Order ID
+
+Payment Method
+
+Date
+
+Total Amount
+
+Orders are stored in LocalStorage for simulation.

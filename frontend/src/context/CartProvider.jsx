@@ -1,55 +1,133 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { CartContext } from "./Cartcontext";
+
+const getItemMode = (mode) => (mode === "wholesale" ? "wholesale" : "retail");
+
+const getUnitPrice = (item) =>
+  getItemMode(item.mode) === "wholesale"
+    ? Number(item.wholesalePrice) || 0
+    : Number(item.retailPrice) || 0;
+
+const getMinimumQuantity = (item, mode = item.mode) =>
+  getItemMode(mode) === "wholesale" ? Number(item.minWholesaleQty) || 1 : 1;
+
+const normalizeCartItem = (item) => {
+  const mode = getItemMode(item.mode);
+  const minimumQuantity = getMinimumQuantity(item, mode);
+  const rawQuantity = Number(item.quantity);
+
+  return {
+    ...item,
+    mode,
+    quantity:
+      Number.isFinite(rawQuantity) && rawQuantity >= minimumQuantity
+        ? rawQuantity
+        : minimumQuantity,
+  };
+};
 
 function CartProvider({ children }) {
   const [cart, setCart] = useState(() => {
-    const savedCart = localStorage.getItem("buyblink-cart");
-    return savedCart ? JSON.parse(savedCart) : [];
+    try {
+      const savedCart = localStorage.getItem("buyblink-cart");
+
+      if (!savedCart) {
+        return [];
+      }
+
+      const parsedCart = JSON.parse(savedCart);
+      return Array.isArray(parsedCart)
+        ? parsedCart.map(normalizeCartItem)
+        : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
     localStorage.setItem("buyblink-cart", JSON.stringify(cart));
   }, [cart]);
-  const addToCart = (product, mode) => {
-    if (mode === "wholesale" && product.minWholesaleQty > 1) {
-      alert(`Minimum wholesale quantity is ${product.minWholesaleQty}`);
-    }
 
-    const existing = cart.find((item) => item.id === product.id);
+  const addToCart = (product, selectedMode = "retail") => {
+    const mode = getItemMode(selectedMode);
+    const quantityToAdd = getMinimumQuantity(product, mode);
 
-    if (existing) {
-      setCart(
-        cart.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item,
-        ),
+    setCart((currentCart) => {
+      const existing = currentCart.find(
+        (item) => item.id === product.id && item.mode === mode,
       );
-    } else {
-      setCart([
-        ...cart,
-        {
+
+      if (existing) {
+        return currentCart.map((item) =>
+          item.id === product.id && item.mode === mode
+            ? { ...item, quantity: item.quantity + quantityToAdd }
+            : item,
+        );
+      }
+
+      return [
+        ...currentCart,
+        normalizeCartItem({
           ...product,
-          quantity: mode === "wholesale" ? product.minWholesaleQty : 1,
           mode,
-        },
-      ]);
-    }
+          quantity: quantityToAdd,
+        }),
+      ];
+    });
   };
 
-  const removeFromCart = (id) => {
-    setCart(cart.filter((item) => item.id !== id));
-  };
+  const removeFromCart = (id, mode) => {
+    const itemMode = getItemMode(mode);
 
-  const updateQuantity = (id, qty) => {
-    setCart(
-      cart.map((item) => (item.id === id ? { ...item, quantity: qty } : item)),
+    setCart((currentCart) =>
+      currentCart.filter(
+        (item) => !(item.id === id && item.mode === itemMode),
+      ),
     );
   };
 
+  const updateQuantity = (id, mode, qty) => {
+    const itemMode = getItemMode(mode);
+
+    setCart((currentCart) =>
+      currentCart.map((item) => {
+        if (item.id !== id || item.mode !== itemMode) {
+          return item;
+        }
+
+        const minimumQuantity = getMinimumQuantity(item, itemMode);
+        const nextQuantity = Number(qty);
+
+        return {
+          ...item,
+          quantity:
+            Number.isFinite(nextQuantity) && nextQuantity >= minimumQuantity
+              ? nextQuantity
+              : minimumQuantity,
+        };
+      }),
+    );
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  const total = cart.reduce(
+    (sum, item) => sum + getUnitPrice(item) * item.quantity,
+    0,
+  );
+
   return (
     <CartContext.Provider
-      value={{ cart, addToCart, removeFromCart, updateQuantity }}
+      value={{
+        cart,
+        total,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+      }}
     >
       {children}
     </CartContext.Provider>

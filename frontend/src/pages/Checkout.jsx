@@ -1,17 +1,37 @@
+import {
+  ArrowRight,
+  CheckCircle2,
+  MapPin,
+  ShieldCheck,
+  Truck,
+} from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import BrandLogo from "../components/BrandLogo";
 import useCart from "../context/useCart";
+import useCustomerAuth from "../context/useCustomerAuth";
+
+const formatCurrency = (value) =>
+  `Rs.${Number(value || 0).toLocaleString("en-IN")}`;
 
 function Checkout() {
   const { cart, total } = useCart();
+  const { customer } = useCustomerAuth();
   const navigate = useNavigate();
 
-  const [shipping, setShipping] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    city: "",
-    pincode: "",
+  const [shipping, setShipping] = useState(() => {
+    const savedShipping = JSON.parse(
+      localStorage.getItem("buyblink-shipping") || "{}",
+    );
+
+    return {
+      name: customer?.name || savedShipping.name || "",
+      email: customer?.email || savedShipping.email || "",
+      phone: savedShipping.phone || "",
+      address: savedShipping.address || "",
+      city: savedShipping.city || "",
+      pincode: savedShipping.pincode || "",
+    };
   });
 
   const handleChange = (e) => {
@@ -23,81 +43,277 @@ function Checkout() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
     localStorage.setItem("buyblink-shipping", JSON.stringify(shipping));
-
     navigate("/payment");
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 grid md:grid-cols-2 gap-10">
-      {/* SHIPPING FORM */}
-      <div>
-        <h2 className="text-2xl font-bold mb-6">Shipping Details</h2>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(34,197,94,0.08),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#f0fdfa_52%,_#f8fafc_100%)] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 px-6 py-8 text-white shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:px-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/80">
+                Shipping Step
+              </p>
+              <h1 className="mt-3 text-4xl font-black tracking-tight">
+                Where should we deliver your order?
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+                This address will be used for your order confirmation, seller
+                fulfilment, and delivery updates.
+              </p>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            name="name"
-            placeholder="Full Name"
-            required
-            onChange={handleChange}
-            className="w-full border p-2 rounded"
-          />
-
-          <input
-            name="phone"
-            placeholder="Phone Number"
-            required
-            onChange={handleChange}
-            className="w-full border p-2 rounded"
-          />
-
-          <input
-            name="address"
-            placeholder="Address"
-            required
-            onChange={handleChange}
-            className="w-full border p-2 rounded"
-          />
-
-          <input
-            name="city"
-            placeholder="City"
-            required
-            onChange={handleChange}
-            className="w-full border p-2 rounded"
-          />
-
-          <input
-            name="pincode"
-            placeholder="Pincode"
-            required
-            onChange={handleChange}
-            className="w-full border p-2 rounded"
-          />
-
-          <button className="bg-green-500 text-white px-6 py-2 rounded">
-            Continue to Payment
-          </button>
-        </form>
-      </div>
-
-      {/* ORDER SUMMARY */}
-      <div className="bg-gray-50 p-6 rounded-lg h-fit">
-        <h3 className="text-xl font-bold mb-4">Order Summary</h3>
-
-        {cart.map((item) => (
-          <div key={item.id} className="flex justify-between mb-2">
-            <span>{item.name}</span>
-            <span>₹{item.price * item.quantity}</span>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Cart Total
+                </p>
+                <p className="mt-2 text-2xl font-bold">{formatCurrency(total)}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Shipping
+                </p>
+                <p className="mt-2 text-2xl font-bold">Free</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Buyer
+                </p>
+                <p className="mt-2 text-xl font-bold">
+                  {customer?.name || "Guest"}
+                </p>
+              </div>
+            </div>
           </div>
-        ))}
+        </section>
 
-        <hr className="my-4" />
+        <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.2fr),380px]">
+          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex items-center gap-3">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                <MapPin size={22} />
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  Delivery Address
+                </p>
+                <h2 className="text-2xl font-black text-slate-950">
+                  Shipping Details
+                </h2>
+              </div>
+            </div>
 
-        <div className="flex justify-between font-bold">
-          <span>Total</span>
-          <span>₹{total}</span>
+            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+              <div className="grid gap-5 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Full Name
+                  </span>
+                  <input
+                    name="name"
+                    placeholder="Full Name"
+                    required
+                    value={shipping.name}
+                    onChange={handleChange}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Email Address
+                  </span>
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="Email Address"
+                    required
+                    value={shipping.email}
+                    onChange={handleChange}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Phone Number
+                  </span>
+                  <input
+                    name="phone"
+                    placeholder="Phone Number"
+                    required
+                    value={shipping.phone}
+                    onChange={handleChange}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Pincode
+                  </span>
+                  <input
+                    name="pincode"
+                    placeholder="Pincode"
+                    required
+                    value={shipping.pincode}
+                    onChange={handleChange}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
+                  />
+                </label>
+              </div>
+
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-slate-700">
+                  Street Address
+                </span>
+                <input
+                  name="address"
+                  placeholder="Address"
+                  required
+                  value={shipping.address}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-slate-700">City</span>
+                <input
+                  name="city"
+                  placeholder="City"
+                  required
+                  value={shipping.city}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
+                />
+              </label>
+
+              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => navigate("/cart")}
+                  className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950"
+                >
+                  Back to Cart
+                </button>
+                <button className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">
+                  Continue to Payment
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <aside className="space-y-5 xl:sticky xl:top-28 xl:self-start">
+            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <BrandLogo theme="light" compact showTagline={false} />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                    Order Summary
+                  </p>
+                  <h3 className="text-xl font-black text-slate-950">
+                    Everything checks out
+                  </h3>
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                {cart.map((item) => {
+                  const lineTotal =
+                    item.quantity *
+                    (item.mode === "wholesale"
+                      ? Number(item.wholesalePrice) || 0
+                      : Number(item.retailPrice) || 0);
+
+                  return (
+                    <div
+                      key={`${item.id}-${item.mode}`}
+                      className="flex items-start justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3"
+                    >
+                      <div>
+                        <p className="font-semibold text-slate-900">{item.name}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">
+                          {item.mode} • Qty {item.quantity}
+                        </p>
+                      </div>
+                      <span className="font-semibold text-slate-950">
+                        {formatCurrency(lineTotal)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 space-y-3 border-t border-slate-100 pt-5 text-sm">
+                <div className="flex items-center justify-between text-slate-600">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(total)}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-600">
+                  <span>Shipping</span>
+                  <span>Free</span>
+                </div>
+                <div className="flex items-center justify-between font-semibold text-slate-950">
+                  <span>Total</span>
+                  <span>{formatCurrency(total)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-lg font-black text-slate-950">
+                Checkout Confidence
+              </h3>
+              <div className="mt-5 space-y-4 text-sm text-slate-600">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                    <CheckCircle2 size={18} />
+                  </span>
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Accurate shipping details
+                    </p>
+                    <p className="mt-1">
+                      Your order history and confirmation will use this address.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700">
+                    <ShieldCheck size={18} />
+                  </span>
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Secure next step
+                    </p>
+                    <p className="mt-1">
+                      Payment selection happens after shipping confirmation.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                    <Truck size={18} />
+                  </span>
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Faster fulfilment
+                    </p>
+                    <p className="mt-1">
+                      Sellers receive clean shipping data right after you pay.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
     </div>

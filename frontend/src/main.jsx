@@ -15,13 +15,16 @@ import App from "./App";
 import AuthProvider from "./context/AuthProvider";
 import "./index.css";
 import CartProvider from "./context/CartProvider";
+import CustomerAuthProvider from "./context/CustomerAuthProvider";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
-      <CartProvider>
-        <App />
-      </CartProvider>
+      <CustomerAuthProvider>
+        <CartProvider>
+          <App />
+        </CartProvider>
+      </CustomerAuthProvider>
     </AuthProvider>
   </React.StrictMode>,
 );

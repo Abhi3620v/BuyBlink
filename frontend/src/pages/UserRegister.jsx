@@ -1,42 +1,41 @@
-import { PackageSearch, ShieldCheck, Store } from "lucide-react";
+import { Heart, MapPin, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthShell from "../components/AuthShell";
 import { AUTH_FIELD_BASE, AUTH_VARIANTS } from "../components/authTheme";
-import useAuth from "../context/useAuth";
+import useCustomerAuth from "../context/useCustomerAuth";
 
-const sellerHighlights = [
+const customerHighlights = [
   {
-    icon: Store,
-    title: "Launch a branded store",
+    icon: ShoppingBag,
+    title: "Faster premium shopping",
     description:
-      "Create your seller identity and start building a storefront that connects with BuyBlink shoppers.",
+      "Create your account once and keep your order flow, cart progress, and account experience connected.",
   },
   {
-    icon: PackageSearch,
-    title: "Retail and wholesale in one place",
+    icon: Heart,
+    title: "Wishlist and reviews",
     description:
-      "Register once and later manage catalog type, stock, sustainability score, and pricing from the same dashboard.",
+      "Save favorites, come back later, and review products after delivery to build more buyer trust.",
   },
   {
-    icon: ShieldCheck,
-    title: "Structured seller onboarding",
+    icon: MapPin,
+    title: "Address-ready account",
     description:
-      "Keep business access separate from customer accounts so your operations stay focused and secure.",
+      "Set up your customer profile first, then manage saved addresses and smoother checkout from your account hub.",
   },
 ];
 
-function Register() {
-  const { register } = useAuth();
+function UserRegister() {
+  const { registerCustomer } = useCustomerAuth();
   const navigate = useNavigate();
-  const theme = AUTH_VARIANTS.seller;
+  const theme = AUTH_VARIANTS.customer;
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    gender: "",
     age: "",
-    storeName: "",
+    gender: "",
   });
 
   const handleChange = (event) => {
@@ -49,70 +48,53 @@ function Register() {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    const success = register(formData);
+    const success = registerCustomer(formData);
 
     if (success) {
-      navigate("/login");
+      navigate("/account");
     }
   };
 
   return (
     <AuthShell
-      variant="seller"
-      badge="Seller Registration"
-      title="Set up your BuyBlink seller account and open your store."
-      description="Register your seller identity, connect it to your store name, and get ready to manage products, orders, and customers in the premium dashboard."
-      formTitle="Seller Sign Up"
-      formDescription="Create your seller account to unlock store setup, inventory management, and order operations."
+      variant="customer"
+      badge="Customer Registration"
+      title="Create your BuyBlink customer account and shop with confidence."
+      description="Sign up once to unlock your premium buyer hub with orders, wishlist, saved addresses, support tools, and a smoother shopping flow."
+      formTitle="Customer Sign Up"
+      formDescription="Set up your customer profile with the details needed for account access and future frontend features."
       stats={[
-        { label: "Store Setup", value: "Fast" },
-        { label: "Modes", value: "Retail + Wholesale" },
-        { label: "Growth", value: "Dashboard Ready" },
+        { label: "Checkout", value: "Smoother" },
+        { label: "Wishlist", value: "Enabled" },
+        { label: "Account Hub", value: "Ready" },
       ]}
-      highlights={sellerHighlights}
-      alternateQuestion="Already have a seller account?"
+      highlights={customerHighlights}
+      alternateQuestion="Already have a customer account?"
       alternateText="Sign in here"
-      alternateTo="/login"
+      alternateTo="/account/login"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid gap-5 md:grid-cols-2">
-          <label className="block">
-            <span className="text-sm font-semibold text-slate-700">
-              Full Name
-            </span>
-            <input
-              type="text"
-              name="name"
-              placeholder="Seller name"
-              required
-              className={`${AUTH_FIELD_BASE} ${theme.focus}`}
-              value={formData.name}
-              onChange={handleChange}
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-semibold text-slate-700">
-              Store Name
-            </span>
-            <input
-              type="text"
-              name="storeName"
-              placeholder="Your store name"
-              required
-              className={`${AUTH_FIELD_BASE} ${theme.focus}`}
-              value={formData.storeName}
-              onChange={handleChange}
-            />
-          </label>
-        </div>
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-700">
+            Full Name
+          </span>
+          <input
+            type="text"
+            name="name"
+            placeholder="Abhinav Singh"
+            required
+            className={`${AUTH_FIELD_BASE} ${theme.focus}`}
+            value={formData.name}
+            onChange={handleChange}
+          />
+        </label>
 
         <label className="block">
           <span className="text-sm font-semibold text-slate-700">Email</span>
           <input
             type="email"
             name="email"
-            placeholder="seller@store.com"
+            placeholder="abhinav@gmail.com"
             required
             className={`${AUTH_FIELD_BASE} ${theme.focus}`}
             value={formData.email}
@@ -125,7 +107,7 @@ function Register() {
           <input
             type="password"
             name="password"
-            placeholder="Create a strong password"
+            placeholder="Create a password"
             required
             className={`${AUTH_FIELD_BASE} ${theme.focus}`}
             value={formData.password}
@@ -139,7 +121,7 @@ function Register() {
             <input
               type="number"
               name="age"
-              placeholder="Age"
+              placeholder="21"
               required
               className={`${AUTH_FIELD_BASE} ${theme.focus}`}
               value={formData.age}
@@ -165,17 +147,17 @@ function Register() {
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-600">
-          Your seller account stays separate from customer access so store operations, dashboard tools, and customer-facing activity remain cleanly divided.
+          Your customer signup uses the same structure you asked for: name, email, password, age, and gender.
         </div>
 
         <button
           className={`w-full rounded-2xl py-3.5 text-sm font-semibold transition ${theme.button}`}
         >
-          Create Seller Account
+          Create Customer Account
         </button>
       </form>
     </AuthShell>
   );
 }
 
-export default Register;
+export default UserRegister;

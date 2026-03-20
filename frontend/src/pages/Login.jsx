@@ -1,16 +1,40 @@
+import { BarChart3, Boxes, Store } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import AuthShell from "../components/AuthShell";
+import { AUTH_FIELD_BASE, AUTH_VARIANTS } from "../components/authTheme";
 import useAuth from "../context/useAuth";
+
+const sellerHighlights = [
+  {
+    icon: Store,
+    title: "Store-first access",
+    description:
+      "Log in to manage your storefront, products, and customer activity from one seller workspace.",
+  },
+  {
+    icon: Boxes,
+    title: "Catalog control",
+    description:
+      "Add inventory once and route products into retail or wholesale with the right pricing setup.",
+  },
+  {
+    icon: BarChart3,
+    title: "Operational visibility",
+    description:
+      "Track orders, customers, and seller-side performance from the dashboard built for your store.",
+  },
+];
 
 function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-
+  const theme = AUTH_VARIANTS.seller;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = (event) => {
+    event.preventDefault();
 
     const success = login(email, password);
 
@@ -20,44 +44,59 @@ function Login() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-slate-100">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow-md w-96"
-      >
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+    <AuthShell
+      variant="seller"
+      badge="Seller Access"
+      title="Sign in to run your BuyBlink store with confidence."
+      description="Access your seller dashboard, manage products, fulfil orders, and stay in control of retail and wholesale operations from one premium workspace."
+      formTitle="Seller Login"
+      formDescription="Use your seller credentials to enter the dashboard and continue managing your store."
+      stats={[
+        { label: "Dashboard", value: "Live" },
+        { label: "Catalog", value: "Retail + Bulk" },
+        { label: "Support", value: "Seller Ready" },
+      ]}
+      highlights={sellerHighlights}
+      alternateQuestion="New seller on BuyBlink?"
+      alternateText="Register your store"
+      alternateTo="/register"
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-700">Email</span>
+          <input
+            type="email"
+            placeholder="seller@store.com"
+            required
+            className={`${AUTH_FIELD_BASE} ${theme.focus}`}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </label>
 
-        {/* Email */}
-        <input
-          type="email"
-          placeholder="Email"
-          required
-          className="w-full mb-4 p-2 border rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-700">Password</span>
+          <input
+            type="password"
+            placeholder="Enter your password"
+            required
+            className={`${AUTH_FIELD_BASE} ${theme.focus}`}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </label>
 
-        {/* Password */}
-        <input
-          type="password"
-          placeholder="Password"
-          required
-          className="w-full mb-6 p-2 border rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-600">
+          Seller login is separate from customer login so storefront management and buyer activity remain clearly organized.
+        </div>
 
-        <button className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition">
-          Login
+        <button
+          className={`w-full rounded-2xl py-3.5 text-sm font-semibold transition ${theme.button}`}
+        >
+          Open Seller Dashboard
         </button>
-        <p className="text-center mt-4 text-sm">
-          Don't have an account?
-          <a href="/register" className="text-green-600 font-medium ml-1">
-            Register
-          </a>
-        </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }
 

@@ -1,35 +1,88 @@
+import { LogOut, Store } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import useAuth from "../context/useAuth";
 import useBusinessMode from "../context/useBusinessMode";
 
+const pageMeta = {
+  "/dashboard": {
+    title: "Seller Overview",
+    subtitle: "Track live performance for the current storefront mode.",
+  },
+  "/dashboard/products": {
+    title: "Product Management",
+    subtitle: "Create products and publish them straight into the marketplace.",
+  },
+  "/dashboard/orders": {
+    title: "Order Management",
+    subtitle: "Update seller fulfilment status and monitor store revenue.",
+  },
+  "/dashboard/customers": {
+    title: "Customer Management",
+    subtitle: "See who buys from your store and spot repeat shoppers.",
+  },
+};
+
 function Topbar() {
   const { user, logout } = useAuth();
-  const { mode, toggleMode } = useBusinessMode();
+  const { mode, setMode } = useBusinessMode();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const currentMeta = pageMeta[location.pathname] || pageMeta["/dashboard"];
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
-    <div className="bg-white shadow-sm px-8 py-4 flex justify-between items-center">
-      <h1 className="text-xl font-semibold">{user?.storeName} Dashboard</h1>
+    <header className="border-b border-slate-200/70 bg-white/80 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            {user?.storeName || user?.name}
+          </p>
+          <h1 className="mt-1 text-2xl font-bold text-slate-950">
+            {currentMeta.title}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">{currentMeta.subtitle}</p>
+        </div>
 
-      <div className="flex items-center gap-6">
-        {/* Mode Toggle */}
-        <button
-          onClick={toggleMode}
-          className={`px-4 py-1 rounded text-white ${
-            mode === "retail" ? "bg-blue-500" : "bg-purple-600"
-          }`}
-        >
-          {mode === "retail" ? "Retail Mode" : "Wholesale Mode"}
-        </button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-1">
+            {["retail", "wholesale"].map((sectionMode) => (
+              <button
+                key={sectionMode}
+                onClick={() => setMode(sectionMode)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  mode === sectionMode
+                    ? "bg-slate-950 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-950"
+                }`}
+              >
+                {sectionMode === "retail" ? "Retail Mode" : "Wholesale Mode"}
+              </button>
+            ))}
+          </div>
 
-        <span className="text-gray-600">{user?.name}</span>
+          <Link
+            to={mode === "wholesale" ? "/wholesale" : "/retail"}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950"
+          >
+            <Store size={16} />
+            Open Storefront
+          </Link>
 
-        <button
-          onClick={logout}
-          className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600"
-        >
-          Logout
-        </button>
+          <button
+            onClick={handleLogout}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400"
+          >
+            <LogOut size={16} />
+            Logout
+          </button>
+        </div>
       </div>
-    </div>
+    </header>
   );
 }
 
