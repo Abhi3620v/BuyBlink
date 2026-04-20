@@ -46,10 +46,10 @@ function Register() {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const success = register(formData);
+    const success = await register(formData);
 
     if (success) {
       navigate("/login");

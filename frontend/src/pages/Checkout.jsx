@@ -5,45 +5,265 @@ import {
   ShieldCheck,
   Truck,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import useCart from "../context/useCart";
 import useCustomerAuth from "../context/useCustomerAuth";
+import { userApi } from "../services/api";
+
+const SHIPPING_KEY = "buyblink-shipping";
 
 const formatCurrency = (value) =>
   `Rs.${Number(value || 0).toLocaleString("en-IN")}`;
 
+const createEmptyShipping = (customer = null) => ({
+  name: customer?.name || "",
+  email: customer?.email || "",
+  phone: customer?.phone || "",
+  address: "",
+  city: "",
+  pincode: "",
+});
+
+const readLocalShipping = () => {
+  try {
+    return JSON.parse(localStorage.getItem(SHIPPING_KEY) || "{}");
+  } catch {
+    return {};
+  }
+};
+
+const buildShippingFromAddress = (address, fallbackEmail = "") => ({
+  name: address?.fullName || address?.name || "",
+  email: address?.email || fallbackEmail || "",
+  phone: address?.phone || "",
+  address: address?.addressLine || address?.address || "",
+  city: address?.city || "",
+  pincode: address?.pincode || "",
+});
+
+const hasCompleteShipping = (shipping) =>
+  shipping.name?.trim().length >= 2 &&
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shipping.email || "") &&
+  shipping.phone?.trim().length >= 10 &&
+  shipping.address?.trim().length >= 5 &&
+  shipping.city?.trim().length >= 2 &&
+  shipping.pincode?.trim().length >= 4;
+
+const getShippingValidationMessage = (shipping) => {
+  if (shipping.name?.trim().length < 2) {
+    return "Full name must be at least 2 characters.";
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shipping.email || "")) {
+    return "Enter a valid email address.";
+  }
+
+  if (shipping.phone?.trim().length < 10) {
+    return "Phone number must be at least 10 digits.";
+  }
+
+  if (shipping.address?.trim().length < 5) {
+    return "Street address must be at least 5 characters.";
+  }
+
+  if (shipping.city?.trim().length < 2) {
+    return "City must be at least 2 characters.";
+  }
+
+  if (shipping.pincode?.trim().length < 4) {
+    return "Pincode must be at least 4 characters.";
+  }
+
+  return "";
+};
+
 function Checkout() {
   const { cart, total } = useCart();
   const { customer } = useCustomerAuth();
+  const customerEmail = customer?.email || "";
+  const customerId = customer?.id || null;
+  const customerName = customer?.name || "";
+  const customerPhone = customer?.phone || "";
   const navigate = useNavigate();
+  const saveTimerRef = useRef(null);
+  const hydratedRef = useRef(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const [shipping, setShipping] = useState(() => {
-    const savedShipping = JSON.parse(
-      localStorage.getItem("buyblink-shipping") || "{}",
-    );
+    const savedShipping = readLocalShipping();
 
     return {
-      name: customer?.name || savedShipping.name || "",
-      email: customer?.email || savedShipping.email || "",
-      phone: savedShipping.phone || "",
-      address: savedShipping.address || "",
-      city: savedShipping.city || "",
-      pincode: savedShipping.pincode || "",
+      ...createEmptyShipping(customer),
+      ...savedShipping,
+      email: customerEmail || savedShipping.email || "",
+      name: customerName || savedShipping.name || "",
+      phone: customerPhone || savedShipping.phone || "",
     };
   });
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [draftSaveState, setDraftSaveState] = useState("idle");
+  const [formError, setFormError] = useState("");
+  const isShippingComplete = useMemo(() => hasCompleteShipping(shipping), [shipping]);
 
-  const handleChange = (e) => {
-    setShipping({
-      ...shipping,
-      [e.target.name]: e.target.value,
-    });
+  const savedAddressCards = useMemo(
+    () =>
+      savedAddresses.map((address) => ({
+        ...address,
+        shipping: buildShippingFromAddress(address, customer?.email || ""),
+      })),
+    [customer?.email, savedAddresses],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    hydratedRef.current = false;
+
+    const bootstrapCheckout = async () => {
+      const localShipping = readLocalShipping();
+
+      if (!customer) {
+        if (!cancelled) {
+          setSavedAddresses([]);
+          setShipping({
+            ...createEmptyShipping(null),
+            ...localShipping,
+          });
+          hydratedRef.current = true;
+          setIsHydrated(true);
+        }
+
+        return;
+      }
+
+      const [draftResponse, addressesResponse] = await Promise.all([
+        userApi.getShippingDraft().catch(() => ({ data: null })),
+        userApi.listAddresses().catch(() => ({ data: [] })),
+      ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      const addresses = addressesResponse.data || [];
+      const backendDraft = draftResponse.data || null;
+      const preferredShipping = backendDraft
+        ? buildShippingFromAddress(backendDraft, customer.email)
+        : addresses[0]
+          ? buildShippingFromAddress(addresses[0], customer.email)
+          : {
+              ...createEmptyShipping(customer),
+              ...localShipping,
+            };
+
+      setSavedAddresses(addresses);
+      setShipping({
+        name: preferredShipping.name || customerName || "",
+        email: customerEmail || preferredShipping.email || "",
+        phone: preferredShipping.phone || customerPhone || "",
+        address: preferredShipping.address || "",
+        city: preferredShipping.city || "",
+        pincode: preferredShipping.pincode || "",
+      });
+      hydratedRef.current = true;
+      setIsHydrated(true);
+    };
+
+    void bootstrapCheckout();
+
+    return () => {
+      cancelled = true;
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [customer, customerEmail, customerId, customerName, customerPhone]);
+
+  useEffect(() => {
+    localStorage.setItem(SHIPPING_KEY, JSON.stringify(shipping));
+
+    if (!customer || !hydratedRef.current) {
+      return;
+    }
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+
+    if (!isShippingComplete) {
+      return;
+    }
+
+    saveTimerRef.current = setTimeout(() => {
+      setDraftSaveState("saving");
+      void userApi
+        .saveShippingDraft(shipping)
+        .then(() => {
+          setDraftSaveState("saved");
+        })
+        .catch(() => {
+          setDraftSaveState("error");
+        });
+    }, 500);
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [customer, isShippingComplete, shipping]);
+
+  const draftStatus =
+    !customer || !isHydrated
+      ? ""
+      : !isShippingComplete
+        ? "Complete the form to save this shipping draft to your account."
+        : draftSaveState === "saving"
+          ? "Saving shipping draft..."
+          : draftSaveState === "saved"
+            ? "Shipping draft saved to your account."
+            : draftSaveState === "error"
+              ? "Unable to save shipping draft right now."
+              : "";
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormError("");
+    setDraftSaveState("idle");
+
+    setShipping((currentShipping) => ({
+      ...currentShipping,
+      [name]: value,
+      ...(name === "email" && customer ? { email: customer.email } : {}),
+    }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    localStorage.setItem("buyblink-shipping", JSON.stringify(shipping));
+  const handleUseSavedAddress = (address) => {
+    setDraftSaveState("idle");
+    setShipping({
+      ...address.shipping,
+      email: customer?.email || address.shipping.email,
+      name: address.shipping.name || customer?.name || "",
+    });
+    setFormError("");
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const validationMessage = getShippingValidationMessage(shipping);
+
+    if (validationMessage) {
+      setFormError(validationMessage);
+      return;
+    }
+
+    localStorage.setItem(SHIPPING_KEY, JSON.stringify(shipping));
+
+    if (customer && hasCompleteShipping(shipping)) {
+      await userApi.saveShippingDraft(shipping).catch(() => {});
+    }
+
     navigate("/payment");
   };
 
@@ -56,7 +276,7 @@ function Checkout() {
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/80">
                 Shipping Step
               </p>
-              <h1 className="mt-3 text-4xl font-black tracking-tight">
+              <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
                 Where should we deliver your order?
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
@@ -106,6 +326,49 @@ function Checkout() {
               </div>
             </div>
 
+            {customer && savedAddressCards.length > 0 && (
+              <div className="mt-8">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      Saved Addresses
+                    </p>
+                    <h3 className="mt-2 text-xl font-black text-slate-950">
+                      Reuse an address from your account
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {savedAddressCards.map((address) => (
+                    <button
+                      key={address.id}
+                      type="button"
+                      onClick={() => handleUseSavedAddress(address)}
+                      className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                          {address.label}
+                        </span>
+                        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                          Use this
+                        </span>
+                      </div>
+                      <p className="mt-4 text-base font-semibold text-slate-950">
+                        {address.name}
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-slate-600">
+                        {address.addressLine}, {address.city}, {address.state},{" "}
+                        {address.pincode}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-500">{address.phone}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
               <div className="grid gap-5 md:grid-cols-2">
                 <label className="space-y-2">
@@ -116,6 +379,7 @@ function Checkout() {
                     name="name"
                     placeholder="Full Name"
                     required
+                    minLength={2}
                     value={shipping.name}
                     onChange={handleChange}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
@@ -133,7 +397,12 @@ function Checkout() {
                     required
                     value={shipping.email}
                     onChange={handleChange}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
+                    readOnly={Boolean(customer)}
+                    className={`w-full rounded-2xl border px-4 py-3 outline-none transition ${
+                      customer
+                        ? "border-slate-200 bg-slate-50 text-slate-500"
+                        : "border-slate-200 focus:border-emerald-400"
+                    }`}
                   />
                 </label>
               </div>
@@ -147,6 +416,7 @@ function Checkout() {
                     name="phone"
                     placeholder="Phone Number"
                     required
+                    minLength={10}
                     value={shipping.phone}
                     onChange={handleChange}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
@@ -161,6 +431,7 @@ function Checkout() {
                     name="pincode"
                     placeholder="Pincode"
                     required
+                    minLength={4}
                     value={shipping.pincode}
                     onChange={handleChange}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
@@ -176,6 +447,7 @@ function Checkout() {
                   name="address"
                   placeholder="Address"
                   required
+                  minLength={5}
                   value={shipping.address}
                   onChange={handleChange}
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
@@ -188,11 +460,24 @@ function Checkout() {
                   name="city"
                   placeholder="City"
                   required
+                  minLength={2}
                   value={shipping.city}
                   onChange={handleChange}
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-emerald-400"
                 />
               </label>
+
+              {formError && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {formError}
+                </div>
+              )}
+
+              {draftStatus && customer && (
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  {draftStatus}
+                </div>
+              )}
 
               <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
                 <button

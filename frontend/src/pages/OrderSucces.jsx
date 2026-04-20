@@ -1,18 +1,28 @@
-import {
-  ArrowRight,
-  CheckCircle2,
-  Truck,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, Truck } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
-import { getOrderById } from "../lib/marketplaceStore";
+import { getOrderById, syncOrders } from "../lib/marketplaceStore";
 
 const formatCurrency = (value) =>
   `Rs.${Number(value || 0).toLocaleString("en-IN")}`;
 
 function OrderSuccess() {
   const lastOrderId = localStorage.getItem("buyblink-last-order-id") || "";
-  const order = getOrderById(lastOrderId);
+  const lastOrderEmail = localStorage.getItem("buyblink-last-order-email") || "";
+  const [order, setOrder] = useState(() => getOrderById(lastOrderId));
+
+  useEffect(() => {
+    const loadOrder = async () => {
+      await syncOrders(lastOrderEmail);
+      setOrder(getOrderById(lastOrderId));
+    };
+
+    if (lastOrderId && lastOrderEmail) {
+      void loadOrder();
+    }
+  }, [lastOrderEmail, lastOrderId]);
+
   const recipientEmail =
     order?.customer?.email || order?.shipping?.email || "Not available";
 
@@ -31,8 +41,8 @@ function OrderSuccess() {
               Your BuyBlink order is confirmed.
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-              We’ve locked in your order details, prepared the confirmation email
-              content, and made the order available in your premium tracking flow.
+              We have locked in your order details, recorded the payment state,
+              and made the order available in your premium tracking flow.
             </p>
           </div>
         </section>
@@ -52,7 +62,7 @@ function OrderSuccess() {
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-2xl bg-slate-50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                     Total
@@ -63,7 +73,7 @@ function OrderSuccess() {
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                    Payment
+                    Method
                   </p>
                   <p className="mt-2 text-xl font-bold text-slate-950">
                     {order?.paymentMethod || "N/A"}
@@ -71,9 +81,17 @@ function OrderSuccess() {
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    Payment Status
+                  </p>
+                  <p className="mt-2 text-xl font-bold text-slate-950">
+                    {order?.paymentStatus || "Unavailable"}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                     Buyer Email
                   </p>
-                  <p className="mt-2 text-sm font-bold text-slate-950">
+                  <p className="mt-2 break-all text-sm font-bold leading-6 text-slate-950">
                     {recipientEmail}
                   </p>
                 </div>
@@ -98,6 +116,16 @@ function OrderSuccess() {
                     {order.shipping?.address}, {order.shipping?.city},{" "}
                     {order.shipping?.pincode}
                   </p>
+                  {order.paymentReference && (
+                    <p className="mt-3 text-sm text-slate-500">
+                      Payment Reference: {order.paymentReference}
+                    </p>
+                  )}
+                  {order.paymentPayerLabel && (
+                    <p className="mt-1 text-sm text-slate-500">
+                      Payment Source: {order.paymentPayerLabel}
+                    </p>
+                  )}
                 </div>
               )}
 

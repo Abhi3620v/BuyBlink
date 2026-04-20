@@ -1,3 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --color-brand-ivory: #f7f4ec;
+    --color-brand-ivory-soft: #fcfaf4;
+    --color-brand-surface: #ffffff;
+    --color-brand-slate: #0f172a;
+    --color-brand-slate-soft: #1e293b;
+    --color-brand-muted: #5f6b7a;
+    --color-brand-border: #ddd6c4;
+    --color-brand-emerald: #10b981;
+    --color-brand-emerald-deep: #0f7a59;
+    --color-brand-emerald-soft: #d9f4e7;
+    --color-brand-champagne: #d6b25e;
+    --color-brand-champagne-deep: #b48e38;
+    --color-brand-champagne-soft: #f4ead1;
+  }
+
+  html {
+    background: var(--color-brand-ivory-soft);
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(16, 185, 129, 0.08), transparent 28%),
+      radial-gradient(circle at top right, rgba(214, 178, 94, 0.1), transparent 24%),
+      linear-gradient(180deg, var(--color-brand-ivory-soft) 0%, var(--color-brand-ivory) 100%);
+    color: var(--color-brand-slate);
+  }
+
+  ::selection {
+    background: rgba(16, 185, 129, 0.18);
+    color: var(--color-brand-slate);
+  }
+}

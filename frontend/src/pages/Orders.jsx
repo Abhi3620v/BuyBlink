@@ -4,20 +4,44 @@ import {
   MailCheck,
   MessageSquarePlus,
   PackageCheck,
+  RefreshCcw,
   ShoppingBag,
+  Star,
   Truck,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import useCustomerAuth from "../context/useCustomerAuth";
 import {
   addProductReview,
+  cancelOrder,
   getAllProductReviews,
   getOrders,
+  retryRazorpayCheckout,
+  syncOrders,
+  verifyRazorpayPayment,
 } from "../lib/marketplaceStore";
 
 const formatCurrency = (value) =>
   `Rs.${Number(value || 0).toLocaleString("en-IN")}`;
+
+const loadRazorpayScript = () =>
+  new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+
+const generateDummyPaymentId = () => "pay_dummy_" + Date.now();
 
 function Orders() {
   const { customer } = useCustomerAuth();
@@ -31,8 +55,24 @@ function Orders() {
     comment: "",
   });
   const [allReviews, setAllReviews] = useState(() => getAllProductReviews());
+  const [, setOrdersVersion] = useState(0);
+  const [retryingOrderId, setRetryingOrderId] = useState("");
+  const [cancellingOrderId, setCancellingOrderId] = useState("");
+  const [pageError, setPageError] = useState("");
   const reviewerEmail = customer?.email || lastOrderEmail;
   const reviewerName = customer?.name || "Verified Buyer";
+
+  useEffect(() => {
+    const loadOrders = async () => {
+      await syncOrders(customer?.email || lastOrderEmail || "");
+      setAllReviews(getAllProductReviews());
+      setOrdersVersion((current) => current + 1);
+    };
+
+    if (customer?.email || lastOrderEmail) {
+      void loadOrders();
+    }
+  }, [customer?.email, lastOrderEmail]);
 
   const orders = getOrders()
     .filter((order) => {
@@ -54,14 +94,43 @@ function Orders() {
     return map;
   }, [allReviews]);
 
-  const handleReviewSubmit = (e) => {
+  const customerReviews = useMemo(() => {
+    if (!reviewerEmail) {
+      return [];
+    }
+
+    return allReviews.filter(
+      (review) => review.customerEmail?.toLowerCase() === reviewerEmail.toLowerCase(),
+    );
+  }, [allReviews, reviewerEmail]);
+
+  const averageReviewRating =
+    customerReviews.length > 0
+      ? customerReviews.reduce((sum, review) => sum + (Number(review.rating) || 0), 0) /
+        customerReviews.length
+      : 0;
+
+  const openReviewModal = (orderId, product, existingReview = null) => {
+    setReviewTarget({
+      orderId,
+      product,
+      existingReview,
+    });
+    setReviewForm({
+      rating: String(existingReview?.rating || 5),
+      title: existingReview?.title || "",
+      comment: existingReview?.comment || "",
+    });
+  };
+
+  const handleReviewSubmit = async (e) => {
     e.preventDefault();
 
     if (!reviewTarget || !reviewerEmail) {
       return;
     }
 
-    addProductReview({
+    await addProductReview({
       orderId: reviewTarget.orderId,
       productId: reviewTarget.product.id,
       mode: reviewTarget.product.mode,
@@ -84,6 +153,155 @@ function Orders() {
     });
   };
 
+  const handleRetryPayment = async (order) => {
+    setRetryingOrderId(order.id);
+    setPageError("");
+
+    const scriptLoaded = await loadRazorpayScript();
+
+    if (!scriptLoaded) {
+      setPageError("Unable to load Razorpay checkout right now. Please try again.");
+      setRetryingOrderId("");
+      return;
+    }
+
+    const checkout = await retryRazorpayCheckout({
+      orderId: order.databaseId || order.id,
+      email: reviewerEmail || undefined,
+    }).catch((error) => {
+      setPageError(error.message || "Unable to start the payment retry.");
+      return null;
+    });
+
+    if (!checkout) {
+      setRetryingOrderId("");
+      return;
+    }
+
+    if (checkout.alreadyCaptured) {
+      await syncOrders(customer?.email || lastOrderEmail || "");
+      setOrdersVersion((current) => current + 1);
+      setRetryingOrderId("");
+      return;
+    }
+
+    if (checkout.keyId?.includes("dummy")) {
+      const mockResponse = {
+        razorpay_order_id: checkout.razorpayOrderId,
+        razorpay_payment_id: generateDummyPaymentId(),
+        razorpay_signature: "dummy_signature",
+      };
+
+      setTimeout(async () => {
+        const verifiedOrder = await verifyRazorpayPayment({
+          razorpayOrderId: mockResponse.razorpay_order_id,
+          razorpayPaymentId: mockResponse.razorpay_payment_id,
+          razorpaySignature: mockResponse.razorpay_signature,
+          email: reviewerEmail || undefined,
+        }).catch((error) => {
+          setPageError(error.message || "Unable to verify the retried payment.");
+          return null;
+        });
+
+        if (!verifiedOrder) {
+          setRetryingOrderId("");
+          return;
+        }
+
+        await syncOrders(customer?.email || lastOrderEmail || "");
+        setOrdersVersion((current) => current + 1);
+        localStorage.setItem("buyblink-last-order-id", verifiedOrder.databaseId);
+        localStorage.setItem(
+          "buyblink-last-order-email",
+          verifiedOrder.shipping?.email || reviewerEmail || "",
+        );
+        localStorage.setItem(
+          "buyblink-last-order-email-status",
+          verifiedOrder.emailStatus || "Unavailable",
+        );
+        setRetryingOrderId("");
+      }, 1000);
+
+      return;
+    }
+
+    const razorpayWindow = new window.Razorpay({
+      key: checkout.keyId,
+      amount: checkout.amount,
+      currency: checkout.currency,
+      name: "BuyBlink",
+      description: `Retry payment for ${checkout.order.id}`,
+      order_id: checkout.razorpayOrderId,
+      prefill: {
+        name: order.shipping?.name || customer?.name || "",
+        email: order.shipping?.email || customer?.email || "",
+        contact: order.shipping?.phone || "",
+      },
+      notes: {
+        buyblink_order_number: checkout.order.id,
+        retry_payment: "true",
+      },
+      theme: {
+        color: "#10b981",
+      },
+      handler: async (response) => {
+        const verifiedOrder = await verifyRazorpayPayment({
+          razorpayOrderId: response.razorpay_order_id,
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpaySignature: response.razorpay_signature,
+          email: reviewerEmail || undefined,
+        }).catch((error) => {
+          setPageError(error.message || "Unable to verify the retried payment.");
+          return null;
+        });
+
+        if (!verifiedOrder) {
+          setRetryingOrderId("");
+          return;
+        }
+
+        await syncOrders(customer?.email || lastOrderEmail || "");
+        setOrdersVersion((current) => current + 1);
+        localStorage.setItem("buyblink-last-order-id", verifiedOrder.databaseId);
+        localStorage.setItem(
+          "buyblink-last-order-email",
+          verifiedOrder.shipping?.email || reviewerEmail || "",
+        );
+        localStorage.setItem(
+          "buyblink-last-order-email-status",
+          verifiedOrder.emailStatus || "Unavailable",
+        );
+        setRetryingOrderId("");
+      },
+      modal: {
+        ondismiss: () => {
+          setRetryingOrderId("");
+        },
+      },
+    });
+
+    razorpayWindow.open();
+  };
+
+  const handleCancelOrder = async (order) => {
+    setCancellingOrderId(order.id);
+    setPageError("");
+
+    const cancelledOrder = await cancelOrder(order.databaseId || order.id).catch((error) => {
+      setPageError(error.message || "Unable to cancel this order right now.");
+      return null;
+    });
+
+    if (!cancelledOrder) {
+      setCancellingOrderId("");
+      return;
+    }
+
+    await syncOrders(customer?.email || lastOrderEmail || "");
+    setOrdersVersion((current) => current + 1);
+    setCancellingOrderId("");
+  };
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(20,184,166,0.08),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_54%,_#f8fafc_100%)] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -102,7 +320,7 @@ function Orders() {
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   Orders
@@ -119,13 +337,53 @@ function Orders() {
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  Email Status
+                  Reviews Shared
                 </p>
-                <p className="mt-2 text-sm font-bold">{emailStatus}</p>
+                <p className="mt-2 text-2xl font-bold">{customerReviews.length}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Avg Review Rating
+                </p>
+                <p className="mt-2 flex items-center gap-2 text-2xl font-bold">
+                  <Star size={18} className="fill-amber-300 text-amber-300" />
+                  {customerReviews.length > 0 ? averageReviewRating.toFixed(1) : "0.0"}
+                </p>
               </div>
             </div>
           </div>
         </section>
+
+        <section className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr),300px]">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+              Review Progress
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">
+              Your delivered-order feedback is building buyer trust.
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-slate-500">
+              You can now edit any submitted review from this page whenever a newer
+              delivery experience changes your opinion.
+            </p>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+              Email Status
+            </p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{emailStatus}</p>
+            <p className="mt-3 text-sm text-slate-500">
+              Confirmation tracking stays visible alongside your review history.
+            </p>
+          </div>
+        </section>
+
+        {pageError && (
+          <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {pageError}
+          </div>
+        )}
 
         {orders.length === 0 ? (
           <section className="mt-8 rounded-[2rem] border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
@@ -160,7 +418,14 @@ function Orders() {
           </section>
         ) : (
           <section className="mt-8 space-y-6">
-            {orders.map((order) => (
+            {orders.map((order) => {
+              const canCancel =
+                ["Placed", "Confirmed", "Processing"].includes(order.status) &&
+                !(order.items || []).some((item) =>
+                  ["Shipped", "Delivered"].includes(item.sellerStatus),
+                );
+
+              return (
               <article
                 key={order.id}
                 className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm"
@@ -171,8 +436,11 @@ function Orders() {
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                         {order.paymentMethod}
                       </span>
+                      <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">
+                        Payment {order.paymentStatus}
+                      </span>
                       <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                        Order Confirmed
+                        {order.status}
                       </span>
                     </div>
 
@@ -207,13 +475,13 @@ function Orders() {
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                        Shipping To
+                        Payment Ref
                       </p>
                       <p className="mt-2 text-sm font-semibold text-slate-950">
-                        {order.shipping?.name}
+                        {order.paymentReference || "Generated at checkout"}
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        {order.shipping?.city}
+                        {order.paymentPayerLabel || order.shipping?.city}
                       </p>
                     </div>
                   </div>
@@ -269,17 +537,20 @@ function Orders() {
                                 <p className="mt-1">
                                   {existingReview.rating}/5 | {existingReview.title}
                                 </p>
+                                <p className="mt-1 text-emerald-600/90">
+                                  Last updated {new Date(existingReview.updatedAt).toLocaleDateString()}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => openReviewModal(order.id, item, existingReview)}
+                                  className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 transition hover:border-emerald-300"
+                                >
+                                  Edit Review
+                                </button>
                               </div>
                             ) : (
                               <button
-                                onClick={() => {
-                                  setReviewTarget({ orderId: order.id, product: item });
-                                  setReviewForm({
-                                    rating: "5",
-                                    title: "",
-                                    comment: "",
-                                  });
-                                }}
+                                onClick={() => openReviewModal(order.id, item)}
                                 className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                               >
                                 <MessageSquarePlus size={16} />
@@ -294,6 +565,28 @@ function Orders() {
                 </div>
 
                 <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-5">
+                  {canCancel && (
+                    <button
+                      type="button"
+                      onClick={() => handleCancelOrder(order)}
+                      disabled={cancellingOrderId === order.id}
+                      className="rounded-full border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
+                    >
+                      {cancellingOrderId === order.id ? "Cancelling..." : "Cancel Order"}
+                    </button>
+                  )}
+                  {order.paymentMethod !== "COD" &&
+                    ["Pending", "Failed"].includes(order.paymentStatus) && (
+                      <button
+                        type="button"
+                        onClick={() => handleRetryPayment(order)}
+                        disabled={retryingOrderId === order.id}
+                        className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                      >
+                        <RefreshCcw size={16} />
+                        {retryingOrderId === order.id ? "Retrying..." : "Retry Payment"}
+                      </button>
+                    )}
                   <Link
                     to="/"
                     className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -321,7 +614,8 @@ function Orders() {
                   </Link>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </section>
         )}
       </div>
@@ -335,10 +629,13 @@ function Orders() {
                   Verified Buyer Review
                 </p>
                 <h2 className="mt-2 text-2xl font-black text-slate-950">
-                  Review {reviewTarget.product.name}
+                  {reviewTarget.existingReview ? "Edit" : "Review"}{" "}
+                  {reviewTarget.product.name}
                 </h2>
                 <p className="mt-2 text-sm text-slate-500">
-                  Share a thoughtful review now that the order has been delivered.
+                  {reviewTarget.existingReview
+                    ? "Refine your rating and comments based on the latest experience."
+                    : "Share a thoughtful review now that the order has been delivered."}
                 </p>
               </div>
 
@@ -421,7 +718,7 @@ function Orders() {
                   Cancel
                 </button>
                 <button className="rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">
-                  Submit Review
+                  {reviewTarget.existingReview ? "Save Review" : "Submit Review"}
                 </button>
               </div>
             </form>

@@ -1,46 +1,91 @@
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
-import { getMarketplaceProductsForSection } from "../lib/marketplaceStore";
+import { normalizeProductRecord } from "../lib/marketplaceStore";
+import { productApi } from "../services/api";
 
 const Wholesale = () => {
   const [searchParams] = useSearchParams();
   const searchTerm = searchParams.get("search")?.trim().toLowerCase() || "";
-  const wholesaleProducts = getMarketplaceProductsForSection("wholesale");
+  const selectedCategory = searchParams.get("category")?.trim() || "";
+  const [wholesaleProducts, setWholesaleProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  const filteredProducts = wholesaleProducts.filter((item) => {
-    if (!searchTerm) {
-      return true;
-    }
+  useEffect(() => {
+    const loadProducts = async () => {
+      setLoading(true);
+      setLoadError("");
 
-    return [item.name, item.description, item.category, item.sellerName]
-      .filter(Boolean)
-      .some((value) => value.toLowerCase().includes(searchTerm));
-  });
+      try {
+        const response = await productApi.list({
+          section: "wholesale",
+          search: searchParams.get("search")?.trim() || "",
+          category: selectedCategory,
+        });
+
+        setWholesaleProducts((response.data || []).map(normalizeProductRecord));
+      } catch (error) {
+        setLoadError(error.message || "Unable to load wholesale products right now.");
+        setWholesaleProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadProducts();
+  }, [searchParams, selectedCategory]);
 
   return (
-    <div className="p-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-3xl font-bold">Wholesale Products</h2>
+          <h2 className="text-3xl font-bold sm:text-4xl">Wholesale Products</h2>
           <p className="text-sm text-slate-500">
             Search bulk-ready inventory and discounted pricing.
           </p>
         </div>
 
-        {searchTerm && (
+        {(searchTerm || selectedCategory) && (
           <p className="text-sm font-medium text-slate-600">
-            Showing results for "{searchParams.get("search")}"
+            Showing
+            {selectedCategory ? ` category "${selectedCategory}"` : ""}
+            {searchTerm ? ` for "${searchParams.get("search")}"` : ""}
           </p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        {filteredProducts.map((item) => (
-          <ProductCard key={item.id} product={item} mode="wholesale" />
-        ))}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        {loading
+          ? Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={`wholesale-loading-${index}`}
+                className="overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-sm"
+              >
+                <div className="h-56 animate-pulse bg-slate-200" />
+                <div className="space-y-4 p-5">
+                  <div className="h-6 w-2/3 animate-pulse rounded bg-slate-200" />
+                  <div className="h-4 w-full animate-pulse rounded bg-slate-200" />
+                  <div className="h-4 w-5/6 animate-pulse rounded bg-slate-200" />
+                  <div className="h-10 w-full animate-pulse rounded-full bg-slate-200" />
+                </div>
+              </div>
+            ))
+          : wholesaleProducts.map((item) => (
+              <ProductCard key={item.id} product={item} mode="wholesale" />
+            ))}
       </div>
 
-      {filteredProducts.length === 0 && (
+      {!loading && loadError && (
+        <div className="mt-10 rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center">
+          <h3 className="text-xl font-semibold text-rose-700">{loadError}</h3>
+          <p className="mt-2 text-sm text-rose-600">
+            Refresh the page or check whether the backend server is running.
+          </p>
+        </div>
+      )}
+
+      {!loading && !loadError && wholesaleProducts.length === 0 && (
         <div className="mt-10 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
           <h3 className="text-xl font-semibold text-slate-800">
             No wholesale products match your search.

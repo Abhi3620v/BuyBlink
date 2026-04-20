@@ -1,9 +1,10 @@
 import { Download, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useAuth from "../context/useAuth";
 import useBusinessMode from "../context/useBusinessMode";
 import {
   getSellerOrders,
+  syncSellerOrders,
   updateSellerOrderItemStatus,
 } from "../lib/marketplaceStore";
 
@@ -15,7 +16,7 @@ const formatCurrency = (value) =>
 function Order() {
   const { user } = useAuth();
   const { mode } = useBusinessMode();
-  const sellerId = user?.email || "";
+  const sellerId = user?.id || "";
   const [orders, setOrders] = useState(() => getSellerOrders(sellerId));
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -24,6 +25,17 @@ function Order() {
   const refreshOrders = () => {
     setOrders(getSellerOrders(sellerId));
   };
+
+  useEffect(() => {
+    const loadOrders = async () => {
+      await syncSellerOrders();
+      setOrders(getSellerOrders(sellerId));
+    };
+
+    if (sellerId) {
+      void loadOrders();
+    }
+  }, [sellerId]);
 
   const filteredOrders = useMemo(
     () =>
@@ -88,6 +100,7 @@ function Order() {
         "Email",
         "City",
         "Payment",
+        "Payment Status",
         "Status",
         "Items",
         "Revenue",
@@ -111,6 +124,7 @@ function Order() {
           order.shipping?.email || order.customer?.email || "",
           order.shipping?.city || "",
           order.paymentMethod,
+          order.paymentStatus || "Unavailable",
           currentStatus,
           orderItems.map((item) => `${item.name} x${item.quantity}`).join(" | "),
           Number(orderAmount || 0),
@@ -138,7 +152,7 @@ function Order() {
   return (
     <div className="space-y-6">
       <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
               Seller Orders
@@ -152,54 +166,58 @@ function Order() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <div className="relative min-w-[240px]">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                type="text"
-                placeholder="Search order, customer, city"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-emerald-400"
-              />
+          <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  type="text"
+                  placeholder="Search orders by ID, customer, email, or city"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-full border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm outline-none transition focus:border-emerald-400"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center xl:shrink-0">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-400"
+                >
+                  <option value="all">All statuses</option>
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={paymentFilter}
+                  onChange={(e) => setPaymentFilter(e.target.value)}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-400"
+                >
+                  <option value="all">All payments</option>
+                  {["UPI", "Card", "COD"].map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={downloadReport}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  <Download size={16} />
+                  Download Report
+                </button>
+              </div>
             </div>
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-400"
-            >
-              <option value="all">All statuses</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={paymentFilter}
-              onChange={(e) => setPaymentFilter(e.target.value)}
-              className="rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-400"
-            >
-              <option value="all">All payments</option>
-              {["UPI", "Card", "COD"].map((method) => (
-                <option key={method} value={method}>
-                  {method}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={downloadReport}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              <Download size={16} />
-              Download Report
-            </button>
           </div>
         </div>
 
@@ -271,8 +289,11 @@ function Order() {
                       {order.shipping?.pincode}
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
-                      Paid via {order.paymentMethod} on{" "}
+                      {order.paymentMethod} payment is {order.paymentStatus} on{" "}
                       {new Date(order.date).toLocaleDateString()}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Ref {order.paymentReference || "generated at checkout"}
                     </p>
                   </div>
 
@@ -292,8 +313,8 @@ function Order() {
                       </span>
                       <select
                         value={currentStatus}
-                        onChange={(e) => {
-                          updateSellerOrderItemStatus(
+                        onChange={async (e) => {
+                          await updateSellerOrderItemStatus(
                             order.id,
                             sellerId,
                             e.target.value,

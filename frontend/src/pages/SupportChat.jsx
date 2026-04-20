@@ -9,7 +9,7 @@ import {
   Ticket,
   UserCircle2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import useCustomerAuth from "../context/useCustomerAuth";
 import {
@@ -17,8 +17,13 @@ import {
   getSupportChatsForEmail,
   getSupportTicketsForEmail,
   getOrCreateSupportChat,
+  markSupportChatAsRead,
+  syncOrders,
+  syncSupportChats,
+  syncSupportTickets,
   sendSupportChatMessage,
 } from "../lib/marketplaceStore";
+import { supportApi } from "../services/api";
 
 const supportCategories = [
   "Order Issue",
@@ -34,13 +39,29 @@ const quickPrompts = [
   "I received a damaged item",
   "I need help with refund eligibility",
   "Payment was deducted twice",
+  "I want to talk to an agent",
 ];
 
 const statusClasses = {
   Active: "bg-emerald-100 text-emerald-700",
   "In Review": "bg-cyan-100 text-cyan-700",
   Resolved: "bg-slate-200 text-slate-700",
+  Closed: "bg-slate-200 text-slate-700",
 };
+const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
+
+const isWaitingForAgent = (chat) => {
+  return Number(chat?.unreadForAdmin) > 0 && chat?.status !== "Closed";
+};
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Attachment upload failed."));
+    reader.readAsDataURL(file);
+  });
 
 const formatTimestamp = (value) =>
   new Date(value).toLocaleString("en-IN", {
@@ -70,34 +91,11 @@ function SupportChat() {
       : "General Support Chat",
   });
   const [draftMessage, setDraftMessage] = useState("");
-  const [chatState, setChatState] = useState(() => {
-    if (!defaultEmail) {
-      return {
-        conversations: [],
-        selectedChatId: null,
-      };
-    }
-
-    const preparedChat =
-      queryOrderId || queryTicketId
-        ? getOrCreateSupportChat({
-            customerName: defaultName,
-            customerEmail: defaultEmail,
-            orderId: queryOrderId,
-            ticketId: queryTicketId,
-            category: "Order Issue",
-            subject: queryOrderId
-              ? `Support for order ${queryOrderId}`
-              : "General Support Chat",
-          })
-        : null;
-
-    const conversations = getSupportChatsForEmail(defaultEmail);
-
-    return {
-      conversations,
-      selectedChatId: preparedChat?.id || conversations[0]?.id || null,
-    };
+  const [attachmentDraft, setAttachmentDraft] = useState(null);
+  const [attachmentError, setAttachmentError] = useState("");
+  const [chatState, setChatState] = useState({
+    conversations: [],
+    selectedChatId: null,
   });
 
   const orders = useMemo(
@@ -126,16 +124,94 @@ function SupportChat() {
     null;
 
   const activeConversations = chatState.conversations.filter(
-    (chat) => chat.status !== "Resolved",
+    (chat) => !["Resolved", "Closed"].includes(chat.status),
   ).length;
 
-  const refreshConversations = (email, preferredChatId = null) => {
+  const refreshConversations = async (email, preferredChatId = null) => {
+    if (!email.trim()) {
+      setChatState({
+        conversations: [],
+        selectedChatId: null,
+      });
+      return;
+    }
+
+    await Promise.all([
+      syncOrders(email.trim()),
+      syncSupportTickets(email.trim()),
+      syncSupportChats(email.trim()),
+    ]);
+
     const conversations = getSupportChatsForEmail(email.trim());
     setChatState({
       conversations,
       selectedChatId: preferredChatId || conversations[0]?.id || null,
     });
   };
+
+  useEffect(() => {
+    const bootstrapChat = async () => {
+      if (!defaultEmail) {
+        return;
+      }
+
+      await refreshConversations(defaultEmail);
+
+      if (queryOrderId || queryTicketId) {
+        const preparedChat = await getOrCreateSupportChat({
+          customerName: defaultName,
+          customerEmail: defaultEmail,
+          orderId: queryOrderId,
+          ticketId: queryTicketId,
+          category: "Order Issue",
+          subject: queryOrderId
+            ? `Support for order ${queryOrderId}`
+            : "General Support Chat",
+        });
+
+        await refreshConversations(defaultEmail, preparedChat.id);
+      }
+    };
+
+    void bootstrapChat();
+  }, [defaultEmail, defaultName, queryOrderId, queryTicketId]);
+
+  useEffect(() => {
+    if (!chatSetup.customerEmail.trim()) {
+      return undefined;
+    }
+
+    const stream = new EventSource(
+      supportApi.customerStreamUrl(chatSetup.customerEmail.trim()),
+    );
+    const handleSupportUpdate = () => {
+      void refreshConversations(chatSetup.customerEmail, chatState.selectedChatId);
+    };
+
+    stream.addEventListener("support-update", handleSupportUpdate);
+
+    return () => {
+      stream.removeEventListener("support-update", handleSupportUpdate);
+      stream.close();
+    };
+  }, [chatSetup.customerEmail, chatState.selectedChatId]);
+
+  useEffect(() => {
+    if (!selectedConversation?.id || selectedConversation.unreadForCustomer <= 0) {
+      return;
+    }
+
+    void markSupportChatAsRead(selectedConversation.id, chatSetup.customerEmail).then(
+      (updatedChat) => {
+        setChatState((currentState) => ({
+          ...currentState,
+          conversations: currentState.conversations.map((chat) =>
+            chat.id === updatedChat.id ? updatedChat : chat,
+          ),
+        }));
+      },
+    ).catch(() => {});
+  }, [chatSetup.customerEmail, selectedConversation?.id, selectedConversation?.unreadForCustomer]);
 
   const handleSetupChange = (event) => {
     const { name, value } = event.target;
@@ -159,40 +235,75 @@ function SupportChat() {
     }));
 
     if (name === "customerEmail") {
-      refreshConversations(value, null);
+      void refreshConversations(value, null);
     }
   };
 
-  const handleCreateChat = () => {
+  const handleCreateChat = async () => {
     if (!chatSetup.customerEmail.trim() || !chatSetup.subject.trim()) {
       return;
     }
 
-    const chat = getOrCreateSupportChat(chatSetup);
-    refreshConversations(chatSetup.customerEmail, chat.id);
+    const chat = await getOrCreateSupportChat(chatSetup);
+    await refreshConversations(chatSetup.customerEmail, chat.id);
   };
 
-  const handleSendMessage = (event) => {
+  const handleAttachmentChange = async (event) => {
+    const file = event.target.files?.[0];
+
+    setAttachmentError("");
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setAttachmentError("Attachments must be 2 MB or smaller.");
+      return;
+    }
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setAttachmentDraft({
+        url: dataUrl,
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+      });
+    } catch {
+      setAttachmentError("Attachment upload failed. Please try another file.");
+    }
+  };
+
+  const handleSendMessage = async (event) => {
     event.preventDefault();
 
-    if (!draftMessage.trim() || !chatSetup.customerEmail.trim()) {
+    if ((!draftMessage.trim() && !attachmentDraft) || !chatSetup.customerEmail.trim()) {
       return;
     }
 
     let activeChatId = chatState.selectedChatId;
 
     if (!activeChatId) {
-      const createdChat = getOrCreateSupportChat(chatSetup);
+      const createdChat = await getOrCreateSupportChat(chatSetup);
       activeChatId = createdChat.id;
     }
 
-    const updatedConversation = sendSupportChatMessage(activeChatId, {
+    const updatedConversation = await sendSupportChatMessage(activeChatId, {
       senderName: chatSetup.customerName || customer?.name || "Customer",
+      customerEmail: chatSetup.customerEmail,
       text: draftMessage,
+      attachment: attachmentDraft || undefined,
     });
 
-    refreshConversations(chatSetup.customerEmail, updatedConversation?.id || activeChatId);
+    await refreshConversations(
+      chatSetup.customerEmail,
+      updatedConversation?.id || activeChatId,
+    );
     setDraftMessage("");
+    setAttachmentDraft(null);
+    setAttachmentError("");
   };
 
   return (
@@ -406,6 +517,11 @@ function SupportChat() {
                           : "border-slate-200 bg-slate-50 hover:border-slate-300"
                       }`}
                     >
+                      {isWaitingForAgent(chat) && (
+                        <div className="mb-3 inline-flex rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                          Waiting for agent reply
+                        </div>
+                      )}
                       <div className="flex items-center justify-between gap-3">
                         <p className="line-clamp-1 text-sm font-semibold text-slate-950">
                           {chat.subject}
@@ -420,7 +536,10 @@ function SupportChat() {
                         {chat.orderId ? `Order ${chat.orderId}` : chat.category}
                       </p>
                       <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-500">
-                        {chat.messages?.[chat.messages.length - 1]?.text}
+                        {chat.messages?.[chat.messages.length - 1]?.text ||
+                          (chat.messages?.[chat.messages.length - 1]?.attachmentUrl
+                            ? "Attachment shared"
+                            : "No messages yet")}
                       </p>
                     </button>
                   ))
@@ -484,6 +603,12 @@ function SupportChat() {
                       </div>
                     </div>
                   </div>
+
+                  {isWaitingForAgent(selectedConversation) && (
+                    <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                      Your latest message is in the admin queue. A real support agent will reply from the support desk.
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
@@ -513,6 +638,25 @@ function SupportChat() {
                             </span>
                           </div>
                           <p className="mt-3 text-sm leading-7">{message.text}</p>
+                          {message.attachmentUrl && (
+                            <div className="mt-3 rounded-2xl border border-slate-200/70 bg-white/80 p-3">
+                              {message.attachmentMimeType?.startsWith("image/") && (
+                                <img
+                                  src={message.attachmentUrl}
+                                  alt={message.attachmentName || "Support attachment"}
+                                  className="max-h-52 rounded-xl object-cover"
+                                />
+                              )}
+                              <a
+                                href={message.attachmentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700 hover:text-cyan-600"
+                              >
+                                {message.attachmentName || "Open attachment"}
+                              </a>
+                            </div>
+                          )}
                           <p
                             className={`mt-3 text-[11px] font-medium ${
                               isCustomer ? "text-slate-400" : "text-slate-400"
@@ -548,11 +692,44 @@ function SupportChat() {
                       placeholder="Type your message to BuyBlink Care"
                       className="min-h-[88px] flex-1 rounded-[1.5rem] border border-slate-200 px-4 py-3 outline-none transition focus:border-cyan-400"
                     />
-                    <button className="inline-flex items-center justify-center gap-2 rounded-[1.5rem] bg-cyan-500 px-6 py-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
-                      <SendHorizontal size={18} />
-                      Send Message
-                    </button>
+                    <div className="flex w-full flex-col gap-3 lg:w-auto">
+                      <label className="inline-flex cursor-pointer items-center justify-center rounded-[1.2rem] border border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600 transition hover:border-slate-300 hover:bg-slate-100">
+                        Attach File
+                        <input
+                          type="file"
+                          onChange={handleAttachmentChange}
+                          accept="image/*,.pdf,.txt,.doc,.docx"
+                          className="hidden"
+                        />
+                      </label>
+                      <button className="inline-flex items-center justify-center gap-2 rounded-[1.5rem] bg-cyan-500 px-6 py-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
+                        <SendHorizontal size={18} />
+                        Send Message
+                      </button>
+                    </div>
                   </form>
+                  {attachmentDraft && (
+                    <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      <span className="line-clamp-1">
+                        Attached: <span className="font-semibold text-slate-900">{attachmentDraft.name}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentDraft(null)}
+                        className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600 transition hover:border-slate-400"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                  {attachmentError && (
+                    <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-rose-600">
+                      {attachmentError}
+                    </p>
+                  )}
+                  <p className="mt-3 text-xs uppercase tracking-[0.16em] text-slate-400">
+                    The support assistant can answer basic questions first. Reply "agent" any time to move this chat to a human.
+                  </p>
                 </div>
               </div>
             ) : (

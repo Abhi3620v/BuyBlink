@@ -33,10 +33,10 @@ function UserLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const success = loginCustomer(email, password);
+    const success = await loginCustomer(email, password);
 
     if (success) {
       navigate("/account");

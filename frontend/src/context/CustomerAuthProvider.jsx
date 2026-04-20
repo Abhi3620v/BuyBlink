@@ -1,74 +1,98 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CustomerAuthContext from "./CustomerAuthContext";
+import { authApi, authStorage, userApi } from "../services/api";
 
 const CUSTOMER_KEY = "buyblink-customer-user";
-const CUSTOMERS_KEY = "buyblink-customer-users";
-
-function CustomerAuthProvider({ children }) {
-  const [customer, setCustomer] = useState(() => {
+const readStoredCustomer = () => {
+  try {
     const savedCustomer = localStorage.getItem(CUSTOMER_KEY);
     return savedCustomer ? JSON.parse(savedCustomer) : null;
-  });
+  } catch {
+    localStorage.removeItem(CUSTOMER_KEY);
+    return null;
+  }
+};
 
-  const registerCustomer = (newCustomer) => {
-    const customers = JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || [];
+function CustomerAuthProvider({ children }) {
+  const [customer, setCustomer] = useState(() => readStoredCustomer());
+  const [loading, setLoading] = useState(Boolean(authStorage.getToken("customer")));
 
-    const exists = customers.find((entry) => entry.email === newCustomer.email);
+  useEffect(() => {
+    const bootstrap = async () => {
+      const token = authStorage.getToken("customer");
 
-    if (exists) {
-      alert("Customer account already exists");
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await authApi.me("customer");
+        setCustomer(response.data);
+        localStorage.setItem(CUSTOMER_KEY, JSON.stringify(response.data));
+      } catch {
+        authStorage.clearToken("customer");
+        localStorage.removeItem(CUSTOMER_KEY);
+        setCustomer(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void bootstrap();
+  }, []);
+
+  const registerCustomer = async (newCustomer) => {
+    try {
+      const response = await authApi.registerCustomer(newCustomer);
+      authStorage.setToken("customer", response.data.token);
+      setCustomer(response.data.user);
+      localStorage.setItem(CUSTOMER_KEY, JSON.stringify(response.data.user));
+      return true;
+    } catch (error) {
+      alert(error.message || "Unable to create customer account.");
       return false;
     }
-
-    customers.push(newCustomer);
-    localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(customers));
-    setCustomer(newCustomer);
-    localStorage.setItem(CUSTOMER_KEY, JSON.stringify(newCustomer));
-    return true;
   };
 
-  const loginCustomer = (email, password) => {
-    const customers = JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || [];
+  const loginCustomer = async (email, password) => {
+    try {
+      const response = await authApi.login({
+        email,
+        password,
+        role: "CUSTOMER",
+      });
 
-    const foundCustomer = customers.find(
-      (entry) => entry.email === email && entry.password === password,
-    );
-
-    if (!foundCustomer) {
-      alert("No customer account found");
+      authStorage.setToken("customer", response.data.token);
+      setCustomer(response.data.user);
+      localStorage.setItem(CUSTOMER_KEY, JSON.stringify(response.data.user));
+      return true;
+    } catch (error) {
+      alert(error.message || "Unable to sign in.");
       return false;
     }
-
-    setCustomer(foundCustomer);
-    localStorage.setItem(CUSTOMER_KEY, JSON.stringify(foundCustomer));
-    return true;
   };
 
   const logoutCustomer = () => {
     setCustomer(null);
+    authStorage.clearToken("customer");
     localStorage.removeItem(CUSTOMER_KEY);
   };
 
-  const updateCustomerProfile = (profileUpdates) => {
+  const updateCustomerProfile = async (profileUpdates) => {
     if (!customer) {
       return false;
     }
 
-    const customers = JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || [];
-    const updatedCustomer = {
-      ...customer,
-      ...profileUpdates,
-      email: customer.email,
-    };
-
-    const updatedCustomers = customers.map((entry) =>
-      entry.email === customer.email ? updatedCustomer : entry,
-    );
-
-    setCustomer(updatedCustomer);
-    localStorage.setItem(CUSTOMER_KEY, JSON.stringify(updatedCustomer));
-    localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(updatedCustomers));
-    return true;
+    try {
+      const response = await userApi.updateProfile(profileUpdates);
+      setCustomer(response.data);
+      localStorage.setItem(CUSTOMER_KEY, JSON.stringify(response.data));
+      return true;
+    } catch (error) {
+      alert(error.message || "Unable to update profile.");
+      return false;
+    }
   };
 
   return (
@@ -79,6 +103,7 @@ function CustomerAuthProvider({ children }) {
         loginCustomer,
         logoutCustomer,
         updateCustomerProfile,
+        loading,
       }}
     >
       {children}

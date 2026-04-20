@@ -1,9 +1,12 @@
 import {
   ArrowUpRight,
+  Headset,
   LayoutDashboard,
   Package,
+  Settings,
   ShoppingCart,
   Store,
+  UserCog,
   Users,
 } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
@@ -11,24 +14,36 @@ import useAuth from "../context/useAuth";
 import useBusinessMode from "../context/useBusinessMode";
 import BrandLogo from "./BrandLogo";
 
-const navItems = [
-  { to: "/dashboard", label: "Overview", icon: LayoutDashboard, end: true },
-  { to: "/dashboard/products", label: "Products", icon: Package },
-  { to: "/dashboard/orders", label: "Orders", icon: ShoppingCart },
-  { to: "/dashboard/customers", label: "Customers", icon: Users },
-];
-
 function Sidebar() {
   const { user } = useAuth();
   const { mode } = useBusinessMode();
+  const isAdmin = user?.role === "ADMIN";
+  const navItems = isAdmin
+    ? [
+        { to: "/dashboard/support", label: "Support Desk", icon: Headset },
+        { to: "/dashboard/users", label: "User Control", icon: UserCog },
+      ]
+    : [
+        { to: "/dashboard", label: "Overview", icon: LayoutDashboard, end: true },
+        { to: "/dashboard/products", label: "Products", icon: Package },
+        { to: "/dashboard/orders", label: "Orders", icon: ShoppingCart },
+        { to: "/dashboard/customers", label: "Customers", icon: Users },
+        { to: "/dashboard/settings", label: "Settings", icon: Settings },
+      ];
 
   return (
     <aside className="border-b border-slate-800 bg-slate-950/95 lg:w-80 lg:shrink-0 lg:border-b-0 lg:border-r">
       <div className="flex h-full flex-col px-5 py-6">
         <div className="flex items-center justify-between gap-3">
           <BrandLogo compact theme="dark" />
-          <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-200">
-            {mode}
+          <span
+            className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] ${
+              isAdmin
+                ? "border border-cyan-400/20 bg-cyan-400/10 text-cyan-200"
+                : "border border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+            }`}
+          >
+            {isAdmin ? "admin" : mode}
           </span>
         </div>
 
@@ -40,7 +55,7 @@ function Sidebar() {
 
             <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
-                Seller Store
+                {isAdmin ? "Support Admin" : "Seller Store"}
               </p>
               <p className="truncate text-base font-semibold text-white">
                 {user?.storeName || user?.name}
@@ -80,23 +95,25 @@ function Sidebar() {
           })}
         </nav>
 
-        <div className="mt-auto space-y-3 pt-8">
-          <Link
-            to="/retail"
-            className="flex items-center justify-between rounded-2xl border border-slate-800 bg-white/[0.03] px-4 py-3 text-sm font-medium text-slate-200 transition hover:border-emerald-400/30 hover:text-white"
-          >
-            View Retail Store
-            <ArrowUpRight size={16} />
-          </Link>
+        {!isAdmin && (
+          <div className="mt-auto space-y-3 pt-8">
+            <Link
+              to="/retail"
+              className="flex items-center justify-between rounded-2xl border border-slate-800 bg-white/[0.03] px-4 py-3 text-sm font-medium text-slate-200 transition hover:border-emerald-400/30 hover:text-white"
+            >
+              View Retail Store
+              <ArrowUpRight size={16} />
+            </Link>
 
-          <Link
-            to="/wholesale"
-            className="flex items-center justify-between rounded-2xl border border-slate-800 bg-white/[0.03] px-4 py-3 text-sm font-medium text-slate-200 transition hover:border-cyan-400/30 hover:text-white"
-          >
-            View Wholesale Store
-            <ArrowUpRight size={16} />
-          </Link>
-        </div>
+            <Link
+              to="/wholesale"
+              className="flex items-center justify-between rounded-2xl border border-slate-800 bg-white/[0.03] px-4 py-3 text-sm font-medium text-slate-200 transition hover:border-cyan-400/30 hover:text-white"
+            >
+              View Wholesale Store
+              <ArrowUpRight size={16} />
+            </Link>
+          </div>
+        )}
       </div>
     </aside>
   );

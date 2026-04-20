@@ -1,5 +1,5 @@
 import { AlertTriangle, Plus, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ProductForm from "../components/ProductForm";
 import useAuth from "../context/useAuth";
 import useBusinessMode from "../context/useBusinessMode";
@@ -7,8 +7,10 @@ import {
   deleteSellerProduct,
   getSellerProductsForStore,
   normalizeCatalogType,
+  syncMarketplaceProducts,
   upsertSellerProduct,
 } from "../lib/marketplaceStore";
+import { getProductFallbackImage } from "../lib/productMedia";
 
 const formatCurrency = (value) =>
   `Rs.${Number(value || 0).toLocaleString("en-IN")}`;
@@ -16,37 +18,71 @@ const formatCurrency = (value) =>
 function Product() {
   const { user } = useAuth();
   const { mode } = useBusinessMode();
-  const sellerId = user?.email || "";
+  const sellerId = user?.id || "";
   const sellerName = user?.storeName || user?.name || "Seller Store";
   const [products, setProducts] = useState(() => getSellerProductsForStore(sellerId));
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
+  const [savingProduct, setSavingProduct] = useState(false);
 
   const refreshProducts = () => {
     setProducts(getSellerProductsForStore(sellerId));
   };
 
-  const handleDelete = (id) => {
-    deleteSellerProduct(id);
+  useEffect(() => {
+    const loadProducts = async () => {
+      await syncMarketplaceProducts();
+      setProducts(getSellerProductsForStore(sellerId));
+    };
+
+    if (sellerId) {
+      void loadProducts();
+    }
+  }, [sellerId]);
+
+  const handleDelete = async (id) => {
+    await deleteSellerProduct(id);
     refreshProducts();
   };
 
-  const handleSaveProduct = (formData) => {
-    upsertSellerProduct({
-      ...editProduct,
-      ...formData,
-      id: editProduct?.id || `seller-${Date.now()}`,
-      sellerId,
-      sellerName,
-      createdAt: editProduct?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+  const handleSaveProduct = async (formData) => {
+    setSavingProduct(true);
 
-    refreshProducts();
-    setEditProduct(null);
-    setShowForm(false);
+    try {
+      const savedProduct = await upsertSellerProduct({
+        ...editProduct,
+        ...formData,
+        sellerId,
+        sellerName,
+        createdAt: editProduct?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      setProducts((currentProducts) => {
+        const existingIndex = currentProducts.findIndex(
+          (product) => product.id === savedProduct.id,
+        );
+
+        if (existingIndex === -1) {
+          return [savedProduct, ...currentProducts];
+        }
+
+        return currentProducts.map((product) =>
+          product.id === savedProduct.id ? savedProduct : product,
+        );
+      });
+
+      await syncMarketplaceProducts();
+      refreshProducts();
+      setEditProduct(null);
+      setShowForm(false);
+    } catch (error) {
+      alert(error.message || "Unable to update the product right now.");
+    } finally {
+      setSavingProduct(false);
+    }
   };
 
   const filteredProducts = useMemo(
@@ -86,7 +122,7 @@ function Product() {
   return (
     <div className="space-y-6">
       <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
               Seller Catalog
@@ -100,51 +136,55 @@ function Product() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <div className="relative min-w-[260px]">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                type="text"
-                placeholder="Search your products"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-emerald-400"
-              />
-            </div>
+          <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  type="text"
+                  placeholder="Search products by name, category, or description"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-full border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm outline-none transition focus:border-emerald-400"
+                />
+              </div>
 
-            <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-1">
-              {[
-                { value: "all", label: "All Stock" },
-                { value: "low", label: "Low Stock" },
-                { value: "healthy", label: "Healthy" },
-              ].map((option) => (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center xl:shrink-0">
+                <div className="inline-flex rounded-full border border-slate-200 bg-white p-1">
+                  {[
+                    { value: "all", label: "All Stock" },
+                    { value: "low", label: "Low Stock" },
+                    { value: "healthy", label: "Healthy" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setStockFilter(option.value)}
+                      className={`rounded-full px-4 py-3 text-sm font-semibold transition ${
+                        stockFilter === option.value
+                          ? "bg-slate-950 text-white"
+                          : "text-slate-600 hover:text-slate-950"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
                 <button
-                  key={option.value}
-                  onClick={() => setStockFilter(option.value)}
-                  className={`rounded-full px-4 py-3 text-sm font-semibold transition ${
-                    stockFilter === option.value
-                      ? "bg-slate-950 text-white"
-                      : "text-slate-600 hover:text-slate-950"
-                  }`}
+                  onClick={() => {
+                    setEditProduct(null);
+                    setShowForm(true);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
-                  {option.label}
+                  <Plus size={16} />
+                  Add Product
                 </button>
-              ))}
+              </div>
             </div>
-
-            <button
-              onClick={() => {
-                setEditProduct(null);
-                setShowForm(true);
-              }}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              <Plus size={16} />
-              Add Product
-            </button>
           </div>
         </div>
 
@@ -213,11 +253,11 @@ function Product() {
               <div className="grid gap-0 md:grid-cols-[220px,minmax(0,1fr)]">
                 <div className="h-full bg-slate-100">
                   <img
-                    src={
-                      product.image ||
-                      "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=900&q=80"
-                    }
+                    src={product.image || getProductFallbackImage(product)}
                     alt={product.name}
+                    onError={(event) => {
+                      event.currentTarget.src = getProductFallbackImage(product);
+                    }}
                     className="h-full min-h-[220px] w-full object-cover"
                   />
                 </div>
@@ -244,6 +284,19 @@ function Product() {
                     {product.description || "No description added yet."}
                   </p>
 
+                  {product.features?.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {product.features.slice(0, 4).map((feature) => (
+                        <span
+                          key={feature}
+                          className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
+                        >
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -266,6 +319,10 @@ function Product() {
                   <div className="mt-5 flex flex-wrap items-center gap-4 text-sm text-slate-500">
                     <span>Min wholesale qty: {product.minWholesaleQty || 1}</span>
                     <span>Inventory: {Number(product.inventory || 0)}</span>
+                    {(product.gallery || []).filter((url) => !url.includes("/api/media/catalog/")).length > 1 && (
+                      <span>{product.gallery.filter((url) => !url.includes("/api/media/catalog/")).length} gallery views</span>
+                    )}
+                    <span>{product.features?.length || 0} features</span>
                     <span>
                       Sustainability: {product.sustainabilityScore}/100
                     </span>
@@ -303,14 +360,18 @@ function Product() {
 
       {showForm && (
         <ProductForm
-          key={editProduct?.id || `new-${mode}`}
+          key={`${editProduct?.id || `new-${mode}`}-${showForm ? "open" : "closed"}`}
           onSaveProduct={handleSaveProduct}
           onClose={() => {
+            if (savingProduct) {
+              return;
+            }
             setShowForm(false);
             setEditProduct(null);
           }}
           editProduct={editProduct}
           defaultCatalogType={mode}
+          isSaving={savingProduct}
         />
       )}
     </div>

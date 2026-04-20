@@ -2,13 +2,16 @@ import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
+  CalendarRange,
   CircleDollarSign,
   Package,
   ShoppingCart,
+  Trophy,
   TrendingUp,
   Users,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, Navigate } from "react-router-dom";
 import useAuth from "../context/useAuth";
 import useBusinessMode from "../context/useBusinessMode";
 import {
@@ -17,15 +20,45 @@ import {
   getSellerOrders,
   getSellerProductsForStore,
   normalizeCatalogType,
+  syncMarketplaceProducts,
+  syncSellerOrders,
 } from "../lib/marketplaceStore";
 
 const formatCurrency = (value) =>
   `Rs.${Number(value || 0).toLocaleString("en-IN")}`;
 
+const getSellerModeRevenue = (order, mode) =>
+  order.sellerItems
+    .filter((item) => item.mode === mode)
+    .reduce((sum, item) => {
+      const unitPrice =
+        item.mode === "wholesale"
+          ? Number(item.wholesalePrice) || 0
+          : Number(item.retailPrice) || 0;
+
+      return sum + unitPrice * item.quantity;
+    }, 0);
+
 function Dashboard() {
   const { user } = useAuth();
   const { mode } = useBusinessMode();
-  const sellerId = user?.email || "";
+  const sellerId = user?.id || "";
+  const [, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const loadSellerData = async () => {
+      await Promise.all([syncMarketplaceProducts(), syncSellerOrders()]);
+      setRefreshKey((current) => current + 1);
+    };
+
+    if (sellerId && user?.role !== "ADMIN") {
+      void loadSellerData();
+    }
+  }, [sellerId, user?.role]);
+
+  if (user?.role === "ADMIN") {
+    return <Navigate to="/dashboard/support" replace />;
+  }
 
   const stats = getSellerDashboardStats(sellerId, mode);
   const sellerProducts = getSellerProductsForStore(sellerId);
@@ -64,6 +97,42 @@ function Dashboard() {
       (item) => item.mode === mode && item.sellerStatus === "Delivered",
     ),
   ).length;
+  const currentDate = new Date();
+  const currentMonthStart = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    1,
+  );
+  const previousMonthStart = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() - 1,
+    1,
+  );
+  const currentMonthOrders = modeOrders.filter(
+    (order) => new Date(order.date) >= currentMonthStart,
+  );
+  const previousMonthOrders = modeOrders.filter((order) => {
+    const orderDate = new Date(order.date);
+    return orderDate >= previousMonthStart && orderDate < currentMonthStart;
+  });
+  const currentMonthRevenue = currentMonthOrders.reduce(
+    (sum, order) => sum + getSellerModeRevenue(order, mode),
+    0,
+  );
+  const previousMonthRevenue = previousMonthOrders.reduce(
+    (sum, order) => sum + getSellerModeRevenue(order, mode),
+    0,
+  );
+  const monthlyRevenueDelta =
+    previousMonthRevenue > 0
+      ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100
+      : currentMonthRevenue > 0
+        ? 100
+        : 0;
+  const averageOrderValue =
+    modeOrders.length > 0 ? stats.revenue / modeOrders.length : 0;
+  const fulfilmentRate =
+    modeOrders.length > 0 ? (deliveredOrders / modeOrders.length) * 100 : 0;
   const lowStockProducts = modeProducts
     .filter((product) => Number(product.inventory || 0) <= 15)
     .sort(
@@ -71,6 +140,45 @@ function Dashboard() {
         Number(firstProduct.inventory || 0) -
         Number(secondProduct.inventory || 0),
     )
+    .slice(0, 4);
+  const topProductPerformance = Object.values(
+    modeOrders.reduce((summary, order) => {
+      order.sellerItems
+        .filter((item) => item.mode === mode)
+        .forEach((item) => {
+          const unitPrice =
+            item.mode === "wholesale"
+              ? Number(item.wholesalePrice) || 0
+              : Number(item.retailPrice) || 0;
+
+          if (!summary[item.id]) {
+            const matchedProduct = sellerProducts.find((product) => product.id === item.id);
+            summary[item.id] = {
+              id: item.id,
+              name: item.name,
+              category: item.category || "General",
+              units: 0,
+              revenue: 0,
+              orders: 0,
+              inventory: Number(matchedProduct?.inventory || 0),
+            };
+          }
+
+          summary[item.id].units += item.quantity;
+          summary[item.id].revenue += unitPrice * item.quantity;
+          summary[item.id].orders += 1;
+        });
+
+      return summary;
+    }, {}),
+  )
+    .sort((firstProduct, secondProduct) => {
+      if (secondProduct.revenue !== firstProduct.revenue) {
+        return secondProduct.revenue - firstProduct.revenue;
+      }
+
+      return secondProduct.units - firstProduct.units;
+    })
     .slice(0, 4);
   const categoryPerformanceMap = modeOrders.reduce((summary, order) => {
     const categoriesInOrder = new Set();
@@ -115,16 +223,7 @@ function Dashboard() {
         month: "short",
       });
 
-      const orderRevenue = order.sellerItems
-        .filter((item) => item.mode === mode)
-        .reduce((sum, item) => {
-          const unitPrice =
-            item.mode === "wholesale"
-              ? Number(item.wholesalePrice) || 0
-              : Number(item.retailPrice) || 0;
-
-          return sum + unitPrice * item.quantity;
-        }, 0);
+      const orderRevenue = getSellerModeRevenue(order, mode);
 
       summary[label] = (summary[label] || 0) + orderRevenue;
       return summary;
@@ -408,6 +507,78 @@ function Dashboard() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-xl font-bold text-slate-950">
+                  Monthly Summary
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Current-month momentum for your active {mode} catalog.
+                </p>
+              </div>
+
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                <CalendarRange size={20} />
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                  This month revenue
+                </p>
+                <p className="mt-2 text-xl font-bold text-slate-950">
+                  {formatCurrency(currentMonthRevenue)}
+                </p>
+                <p
+                  className={`mt-2 text-sm font-semibold ${
+                    monthlyRevenueDelta >= 0 ? "text-emerald-600" : "text-rose-600"
+                  }`}
+                >
+                  {monthlyRevenueDelta >= 0 ? "+" : ""}
+                  {monthlyRevenueDelta.toFixed(1)}% vs last month
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                  Average order value
+                </p>
+                <p className="mt-2 text-xl font-bold text-slate-950">
+                  {formatCurrency(averageOrderValue)}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  {currentMonthOrders.length} orders this month
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                  Fulfilment rate
+                </p>
+                <p className="mt-2 text-xl font-bold text-slate-950">
+                  {fulfilmentRate.toFixed(0)}%
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  Based on delivered orders in this mode
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                  Previous month
+                </p>
+                <p className="mt-2 text-xl font-bold text-slate-950">
+                  {formatCurrency(previousMonthRevenue)}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  Benchmark for current store momentum
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-bold text-slate-950">
                   Low Stock Alerts
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">
@@ -433,9 +604,20 @@ function Dashboard() {
                         {product.category}
                       </p>
                     </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
-                      {Number(product.inventory || 0)} left
-                    </span>
+                    <div className="text-right">
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
+                        {Number(product.inventory || 0)} left
+                      </span>
+                      <p
+                        className={`mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                          Number(product.inventory || 0) <= 5
+                            ? "text-rose-600"
+                            : "text-amber-600"
+                        }`}
+                      >
+                        {Number(product.inventory || 0) <= 5 ? "Critical" : "Reorder soon"}
+                      </p>
+                    </div>
                   </div>
                 ))
               ) : (
@@ -492,6 +674,58 @@ function Dashboard() {
           </div>
 
           <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-bold text-slate-950">
+                  Best-Selling Products
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Track which products are pulling the most revenue right now.
+                </p>
+              </div>
+
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-100 text-rose-700">
+                <Trophy size={20} />
+              </span>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {topProductPerformance.length > 0 ? (
+                topProductPerformance.map((product, index) => (
+                  <div key={product.id} className="rounded-2xl bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                          #{index + 1} product
+                        </p>
+                        <p className="mt-2 font-semibold text-slate-950">
+                          {product.name}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {product.category}
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-emerald-700">
+                        {formatCurrency(product.revenue)}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      <span>{product.units} units sold</span>
+                      <span>{product.orders} order touches</span>
+                      <span>{product.inventory} in stock</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
+                  Product-level rankings will appear after customers start buying.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
             <h3 className="text-xl font-bold text-slate-950">Store Actions</h3>
             <div className="mt-5 space-y-3">
               <Link
@@ -506,6 +740,13 @@ function Dashboard() {
                 className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-cyan-300 hover:text-slate-950"
               >
                 Review customer base
+                <ArrowRight size={16} />
+              </Link>
+              <Link
+                to="/dashboard/settings"
+                className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-rose-300 hover:text-slate-950"
+              >
+                Update store settings
                 <ArrowRight size={16} />
               </Link>
             </div>

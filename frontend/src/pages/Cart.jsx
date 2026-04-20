@@ -10,6 +10,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import useCart from "../context/useCart";
+import { getProductFallbackImage } from "../lib/productMedia";
 
 const formatCurrency = (value) =>
   `Rs.${Number(value || 0).toLocaleString("en-IN")}`;
@@ -27,7 +28,7 @@ function Cart() {
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/80">
                 Premium Cart
               </p>
-              <h1 className="mt-3 text-4xl font-black tracking-tight">
+              <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
                 Review your order before checkout.
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
@@ -105,19 +106,28 @@ function Cart() {
                     key={`${item.id}-${item.mode}`}
                     className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm"
                   >
-                    <div className="grid gap-0 md:grid-cols-[200px,minmax(0,1fr)]">
+                    <div className="grid gap-0 md:grid-cols-[180px,minmax(0,1fr)] lg:grid-cols-[200px,minmax(0,1fr)]">
                       <div className="bg-slate-100">
                         <img
                           src={
                             item.image ||
-                            "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=900&q=80"
+                            getProductFallbackImage({
+                              name: item.name,
+                              category: item.category,
+                            })
                           }
                           alt={item.name}
+                          onError={(event) => {
+                            event.currentTarget.src = getProductFallbackImage({
+                              name: item.name,
+                              category: item.category,
+                            });
+                          }}
                           className="h-full min-h-[220px] w-full object-cover"
                         />
                       </div>
 
-                      <div className="p-6">
+                      <div className="p-5 sm:p-6">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -137,7 +147,7 @@ function Cart() {
                               )}
                             </div>
 
-                            <h2 className="mt-4 text-2xl font-black text-slate-950">
+                            <h2 className="mt-4 text-xl font-black text-slate-950 sm:text-2xl">
                               {item.name}
                             </h2>
                             <p className="mt-2 text-sm leading-7 text-slate-500">

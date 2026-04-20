@@ -45,10 +45,10 @@ function UserRegister() {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const success = registerCustomer(formData);
+    const success = await registerCustomer(formData);
 
     if (success) {
       navigate("/account");

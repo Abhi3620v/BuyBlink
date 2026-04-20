@@ -1,158 +1,167 @@
-# React + Vite
+# BuyBlink
+
+BuyBlink is a full-stack dual-mode commerce platform built for both retail shoppers and wholesale buyers. The project combines a polished storefront, seller operations dashboard, customer account area, admin support workspace, and a real backend with Prisma-powered data models for products, orders, reviews, payments, notifications, and support flows.
+
+## Why It Stands Out
+
+- Dual retail and wholesale buying journeys inside one marketplace
+- Distinct customer, seller, and admin experiences
+- Premium storefront design instead of a plain CRUD demo
+- Real backend architecture with PostgreSQL + Prisma
+- Support tickets and live-style chat connected to orders
+- Reviews, payment records, email/SMS logging, notifications, and audit logs
+
+## Product Areas
+
+### Customer
+
+- Landing page with live product and review highlights
+- Retail and wholesale catalog browsing
+- Product detail pages with pricing modes and reviews
+- Cart, checkout, payment, order history, wishlist, and account hub
+- Support tickets and chat for order-linked issue resolution
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+### Seller
 
-Currently, two official plugins are available:
+- Seller login and protected dashboard
+- Product create, update, archive, and inventory tracking
+- Order management with seller-side fulfilment status
+- Customer and revenue views across catalog modes
+- Store profile and settings management
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Admin
 
-## React Compiler
+- Admin login route through seller auth flow
+- Support desk for tickets, chats, replies, and queue management
+- User moderation controls for account suspension/reactivation
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+### Frontend
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- React 19
+- Vite
+- React Router 7
+- Tailwind CSS
+- Local cache helpers for smoother UX while syncing backend data
 
-BuyBlink – Retail & Wholesale E-Commerce Platform
-Project Overview
+### Backend
 
-BuyBlink is a modern dual-mode e-commerce platform that allows users to purchase products either individually (Retail) or in bulk (Wholesale). The platform also includes a Seller Dashboard where sellers can manage their products using a complete CRUD system.
+- Node.js
+- Express 5
+- PostgreSQL
+- Prisma ORM
+- JWT authentication
+- Zod validation
+- Razorpay integration hooks
+- SMTP and SMS provider configuration support
 
-The project demonstrates the complete frontend architecture of an e-commerce marketplace, including product browsing, cart management, checkout, payment selection, and order history.
+## Repo Structure
 
-Currently the application uses LocalStorage for data persistence, but the architecture is designed so it can easily be connected to a backend API and database.
+```text
+BuyBlink/
+  frontend/
+    src/
+      components/
+      context/
+      layout/
+      lib/
+      pages/
+  backend/
+    prisma/
+    src/
+      config/
+      lib/
+      middlewares/
+      modules/
+      routes/
+      scripts/
+      utils/
+    tests/
+  docs/
+```
 
-Key Features
-Authentication System
+## Demo Credentials
 
-Seller registration
+Running the backend seed creates these accounts:
 
-Seller login
+- Admin: `admin@buyblink.com` / `buyblink-admin`
+- Seed seller: `platform@buyblink.com` / `buyblink-platform`
 
-Protected dashboard access
+Customers can register from the UI.
 
-Session persistence using LocalStorage
+## Getting Started
 
-Seller Dashboard
+### 1. Frontend
 
-Sellers can manage their store through a dashboard interface.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-Features include:
+The frontend runs on `http://localhost:5173` by default.
 
-Add Product
+### 2. Backend
 
-Edit Product
+```bash
+cd backend
+npm install
+cp .env.example .env
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+npm run dev
+```
 
-Delete Product
+The backend runs on `http://localhost:4000` by default.
 
-Product listing table
+## Environment Setup
 
-Image preview
+At minimum, configure:
 
-Search products
+```env
+DATABASE_URL=
+JWT_SECRET=
+CLIENT_URL=http://localhost:5173
+```
 
-Product Marketplace
+Optional live integrations are supported for:
 
-Users can browse products through a clean product grid.
+- Razorpay
+- SMTP email
+- Twilio SMS
 
-Each product card includes:
+See [backend/README.md](./backend/README.md) for backend-specific setup details.
 
-Product image
+## Verification Commands
 
-Product description
+### Frontend
 
-Retail price
+```bash
+cd frontend
+npm run lint
+npm run build
+```
 
-Wholesale price
+### Backend
 
-Minimum wholesale quantity
+```bash
+cd backend
+npm test
+npx prisma validate
+```
 
-Rating display
+## Current Highlights
 
-Discount badge
+- Production build succeeds
+- Prisma schema validates cleanly
+- Route-level lazy loading is enabled to improve bundle delivery
+- Helper tests cover core formatting and support logic
 
-Wishlist toggle
+## Good Next Steps
 
-Quick action buttons
-
-Retail & Wholesale Modes
-
-BuyBlink supports two purchasing modes:
-
-Retail Mode
-
-Users buy single products
-
-Standard retail price
-
-Wholesale Mode
-
-Users buy bulk quantities
-
-Discounted wholesale pricing
-
-Minimum quantity requirement
-
-Cart System
-
-Users can manage products inside the cart.
-
-Features include:
-
-Add to cart
-
-Remove item
-
-Update quantity
-
-Persistent cart storage
-
-Order summary calculation
-
-Checkout System
-
-The checkout process includes multiple steps:
-
-Cart Page
-
-Shipping Details Form
-
-Payment Method Selection
-
-Order Confirmation
-
-Payment Page
-
-Users can select a payment method such as:
-
-UPI
-
-Debit / Credit Card
-
-Cash on Delivery
-
-Currently this is a mock payment UI, but it is designed so it can easily integrate with real payment gateways such as:
-
-Razorpay
-
-Stripe
-
-Order Success Page
-
-After payment confirmation the user sees an order success message and can continue shopping.
-
-Order History Page
-
-Users can view their previous orders including:
-
-Order ID
-
-Payment Method
-
-Date
-
-Total Amount
-
-Orders are stored in LocalStorage for simulation.
+- Add end-to-end tests for checkout, support, and admin moderation flows
+- Add screenshots or a short walkthrough video to strengthen presentation
+- Wire live email/SMS/payment credentials for a full deployment demo
+- Expand automated tests around services and API routes

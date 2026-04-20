@@ -92,7 +92,7 @@ function AuthShell({
               </div>
               <div className="flex items-center gap-3 text-sm text-slate-200">
                 <CheckCircle2 size={16} className={theme.accentText} />
-                Ready for later backend integration and live data sync
+                Live accounts, orders, and support synced with BuyBlink backend
               </div>
               <div className="flex items-center gap-3 text-sm text-slate-200">
                 <CheckCircle2 size={16} className={theme.accentText} />

@@ -20,6 +20,18 @@ const pageMeta = {
     title: "Customer Management",
     subtitle: "See who buys from your store and spot repeat shoppers.",
   },
+  "/dashboard/support": {
+    title: "Support Desk",
+    subtitle: "Monitor customer tickets and support chats across BuyBlink.",
+  },
+  "/dashboard/users": {
+    title: "User Control",
+    subtitle: "Review account health and suspend or reactivate marketplace users.",
+  },
+  "/dashboard/settings": {
+    title: "Store Settings",
+    subtitle: "Update the seller identity customers see across your storefront.",
+  },
 };
 
 function Topbar() {
@@ -27,8 +39,11 @@ function Topbar() {
   const { mode, setMode } = useBusinessMode();
   const location = useLocation();
   const navigate = useNavigate();
+  const isAdmin = user?.role === "ADMIN";
 
-  const currentMeta = pageMeta[location.pathname] || pageMeta["/dashboard"];
+  const currentMeta =
+    pageMeta[location.pathname] ||
+    (isAdmin ? pageMeta["/dashboard/support"] : pageMeta["/dashboard"]);
 
   const handleLogout = () => {
     logout();
@@ -40,7 +55,7 @@ function Topbar() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-            {user?.storeName || user?.name}
+            {isAdmin ? "BuyBlink Support Admin" : user?.storeName || user?.name}
           </p>
           <h1 className="mt-1 text-2xl font-bold text-slate-950">
             {currentMeta.title}
@@ -49,29 +64,33 @@ function Topbar() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-1">
-            {["retail", "wholesale"].map((sectionMode) => (
-              <button
-                key={sectionMode}
-                onClick={() => setMode(sectionMode)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  mode === sectionMode
-                    ? "bg-slate-950 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-950"
-                }`}
-              >
-                {sectionMode === "retail" ? "Retail Mode" : "Wholesale Mode"}
-              </button>
-            ))}
-          </div>
+          {!isAdmin && (
+            <>
+              <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-1">
+                {["retail", "wholesale"].map((sectionMode) => (
+                  <button
+                    key={sectionMode}
+                    onClick={() => setMode(sectionMode)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                      mode === sectionMode
+                        ? "bg-slate-950 text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-950"
+                    }`}
+                  >
+                    {sectionMode === "retail" ? "Retail Mode" : "Wholesale Mode"}
+                  </button>
+                ))}
+              </div>
 
-          <Link
-            to={mode === "wholesale" ? "/wholesale" : "/retail"}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950"
-          >
-            <Store size={16} />
-            Open Storefront
-          </Link>
+              <Link
+                to={mode === "wholesale" ? "/wholesale" : "/retail"}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950"
+              >
+                <Store size={16} />
+                Open Storefront
+              </Link>
+            </>
+          )}
 
           <button
             onClick={handleLogout}

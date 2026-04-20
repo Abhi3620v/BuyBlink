@@ -1,8 +1,12 @@
 import { Crown, Search, Star, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useAuth from "../context/useAuth";
 import useBusinessMode from "../context/useBusinessMode";
-import { getSellerCustomers, getSellerOrders } from "../lib/marketplaceStore";
+import {
+  getSellerCustomers,
+  getSellerOrders,
+  syncSellerOrders,
+} from "../lib/marketplaceStore";
 
 const formatCurrency = (value) =>
   `Rs.${Number(value || 0).toLocaleString("en-IN")}`;
@@ -22,8 +26,20 @@ const getCustomerTier = (customer) => {
 function Customer() {
   const { user } = useAuth();
   const { mode } = useBusinessMode();
-  const sellerId = user?.email || "";
+  const sellerId = user?.id || "";
   const [searchTerm, setSearchTerm] = useState("");
+  const [, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const loadOrders = async () => {
+      await syncSellerOrders();
+      setRefreshKey((current) => current + 1);
+    };
+
+    if (sellerId) {
+      void loadOrders();
+    }
+  }, [sellerId]);
 
   const sellerOrders = getSellerOrders(sellerId);
   const modeOrders = sellerOrders.filter((order) =>

@@ -6,13 +6,15 @@ import {
   MessageSquareWarning,
   ShieldCheck,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import useCustomerAuth from "../context/useCustomerAuth";
 import {
   createSupportTicket,
   getOrders,
   getSupportTicketsForEmail,
+  syncOrders,
+  syncSupportTickets,
 } from "../lib/marketplaceStore";
 
 const issueCategories = [
@@ -59,6 +61,7 @@ function Support() {
     getSupportTicketsForEmail(customerEmail),
   );
   const [latestTicket, setLatestTicket] = useState(null);
+  const [, setRefreshKey] = useState(0);
   const [formData, setFormData] = useState({
     customerName,
     customerEmail,
@@ -75,6 +78,21 @@ function Support() {
   const openTickets = tickets.filter((ticket) => ticket.status === "Open").length;
   const linkedOrders = tickets.filter((ticket) => ticket.orderId).length;
 
+  useEffect(() => {
+    const loadData = async () => {
+      await Promise.all([
+        syncOrders(customerEmail),
+        syncSupportTickets(customerEmail),
+      ]);
+      setTickets(getSupportTicketsForEmail(customerEmail));
+      setRefreshKey((current) => current + 1);
+    };
+
+    if (customerEmail) {
+      void loadData();
+    }
+  }, [customerEmail]);
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -88,10 +106,10 @@ function Support() {
     }
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const createdTicket = createSupportTicket(formData);
+    const createdTicket = await createSupportTicket(formData);
 
     setLatestTicket(createdTicket);
     setTickets(getSupportTicketsForEmail(formData.customerEmail.trim()));

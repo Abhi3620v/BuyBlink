@@ -1,5 +1,4 @@
 import {
-  BadgeCheck,
   Heart,
   LifeBuoy,
   MapPin,
@@ -12,7 +11,7 @@ import {
   Trash2,
   UserCircle2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import useCustomerAuth from "../context/useCustomerAuth";
 import useWishlist from "../context/useWishlist";
@@ -20,24 +19,11 @@ import {
   getOrders,
   getSupportChatsForEmail,
   getSupportTicketsForEmail,
+  syncOrders,
+  syncSupportChats,
+  syncSupportTickets,
 } from "../lib/marketplaceStore";
-
-const ADDRESS_BOOK_KEY = "buyblink-user-address-book";
-
-const readAddressBook = () => {
-  try {
-    const saved = localStorage.getItem(ADDRESS_BOOK_KEY);
-    return saved ? JSON.parse(saved) : {};
-  } catch {
-    return {};
-  }
-};
-
-const writeAddressBook = (value) => {
-  localStorage.setItem(ADDRESS_BOOK_KEY, JSON.stringify(value));
-};
-
-const getAddressScope = (email) => email?.trim().toLowerCase() || "guest";
+import { userApi } from "../services/api";
 
 const emptyAddressForm = {
   label: "Home",
@@ -56,19 +42,44 @@ function Account() {
   const { customer, updateCustomerProfile } = useCustomerAuth();
   const { wishlistItems, wishlistCount } = useWishlist();
   const customerEmail = customer?.email || "";
-  const addressScope = getAddressScope(customerEmail);
-  const [profileForm, setProfileForm] = useState({
+  const profileSourceId = customer?.id || customer?.email || "guest";
+  const baseProfileForm = useMemo(() => ({
     name: customer?.name || "",
     email: customer?.email || "",
     age: customer?.age || "",
     gender: customer?.gender || "",
     phone: customer?.phone || "",
-  });
+  }), [customer?.age, customer?.email, customer?.gender, customer?.name, customer?.phone]);
+  const [profileDraft, setProfileDraft] = useState(null);
   const [profileSaved, setProfileSaved] = useState(false);
-  const [addressBook, setAddressBook] = useState(() => readAddressBook());
+  const [addresses, setAddresses] = useState([]);
   const [addressForm, setAddressForm] = useState(emptyAddressForm);
+  const [, setRefreshKey] = useState(0);
+  const profileForm =
+    profileDraft?.sourceId === profileSourceId ? profileDraft.values : baseProfileForm;
 
-  const addresses = addressBook[addressScope] || [];
+  useEffect(() => {
+    const loadAccountData = async () => {
+      if (!customerEmail) {
+        setAddresses([]);
+        return;
+      }
+
+      await Promise.all([
+        syncOrders(customerEmail),
+        syncSupportTickets(customerEmail),
+        syncSupportChats(customerEmail),
+      ]);
+
+      const response = await userApi.listAddresses().catch(() => ({ data: [] }));
+      setAddresses(response.data || []);
+      setRefreshKey((current) => current + 1);
+    };
+
+    if (customer) {
+      void loadAccountData();
+    }
+  }, [customer, customerEmail]);
   const orders = useMemo(
     () =>
       getOrders()
@@ -97,7 +108,7 @@ function Account() {
     (ticket) => ticket.status !== "Resolved",
   ).length;
   const activeChats = supportChats.filter(
-    (chat) => chat.status !== "Resolved",
+    (chat) => !["Resolved", "Closed"].includes(chat.status),
   ).length;
   const totalSpend = orders.reduce(
     (sum, order) => sum + (Number(order.amount) || 0),
@@ -107,24 +118,28 @@ function Account() {
   const handleProfileChange = (event) => {
     const { name, value } = event.target;
 
-    setProfileForm((currentForm) => ({
-      ...currentForm,
-      [name]: value,
+    setProfileDraft((currentDraft) => ({
+      sourceId: profileSourceId,
+      values: {
+        ...(currentDraft?.sourceId === profileSourceId ? currentDraft.values : baseProfileForm),
+        [name]: value,
+      },
     }));
     setProfileSaved(false);
   };
 
-  const handleProfileSave = (event) => {
+  const handleProfileSave = async (event) => {
     event.preventDefault();
 
-    const success = updateCustomerProfile({
+    const success = await updateCustomerProfile({
       name: profileForm.name.trim(),
-      age: profileForm.age,
+      age: profileForm.age ? Number(profileForm.age) : null,
       gender: profileForm.gender,
       phone: profileForm.phone.trim(),
     });
 
     if (success) {
+      setProfileDraft(null);
       setProfileSaved(true);
     }
   };
@@ -138,25 +153,23 @@ function Account() {
     }));
   };
 
-  const handleAddressSave = (event) => {
+  const handleAddressSave = async (event) => {
     event.preventDefault();
 
     if (!customerEmail) {
       return;
     }
 
-    const nextAddress = {
-      id: `ADDR-${Date.now()}`,
-      ...addressForm,
-    };
+    const response = await userApi.createAddress(addressForm).catch((error) => {
+      alert(error.message || "Unable to save address.");
+      return null;
+    });
 
-    const updatedAddressBook = {
-      ...addressBook,
-      [addressScope]: [nextAddress, ...(addressBook[addressScope] || [])],
-    };
+    if (!response) {
+      return;
+    }
 
-    setAddressBook(updatedAddressBook);
-    writeAddressBook(updatedAddressBook);
+    setAddresses((currentAddresses) => [response.data, ...currentAddresses]);
     setAddressForm({
       ...emptyAddressForm,
       fullName: customer?.name || "",
@@ -164,26 +177,29 @@ function Account() {
     });
   };
 
-  const handleAddressDelete = (addressId) => {
-    const updatedAddressBook = {
-      ...addressBook,
-      [addressScope]: (addressBook[addressScope] || []).filter(
-        (address) => address.id !== addressId,
-      ),
-    };
+  const handleAddressDelete = async (addressId) => {
+    const deleted = await userApi.deleteAddress(addressId).then(() => true).catch((error) => {
+      alert(error.message || "Unable to delete address.");
+      return false;
+    });
 
-    setAddressBook(updatedAddressBook);
-    writeAddressBook(updatedAddressBook);
+    if (!deleted) {
+      return;
+    }
+
+    setAddresses((currentAddresses) =>
+      currentAddresses.filter((address) => address.id !== addressId),
+    );
   };
 
   if (!customer) {
     return (
       <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(14,165,233,0.08),_transparent_24%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_52%,_#f8fafc_100%)] px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl rounded-[2rem] border border-slate-200 bg-white p-10 text-center shadow-sm">
+        <div className="mx-auto max-w-5xl rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-10">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-500">
             <UserCircle2 size={32} />
           </div>
-          <h1 className="mt-6 text-4xl font-black text-slate-950">
+          <h1 className="mt-6 text-3xl font-black text-slate-950 sm:text-4xl">
             Sign in to open your account hub.
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-500">
@@ -218,7 +234,7 @@ function Account() {
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/80">
                 My Account
               </p>
-              <h1 className="mt-3 text-4xl font-black tracking-tight">
+              <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
                 Welcome back, {customer.name}.
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
@@ -520,7 +536,7 @@ function Account() {
                         </button>
                       </div>
                       <p className="mt-4 text-base font-semibold text-slate-950">
-                        {address.fullName}
+                        {address.fullName || address.name}
                       </p>
                       <p className="mt-2 text-sm leading-7 text-slate-600">
                         {address.addressLine}, {address.city}, {address.state},{" "}
@@ -540,7 +556,7 @@ function Account() {
                 Account Snapshot
               </p>
               <h2 className="mt-2 text-2xl font-black text-slate-950">
-                Frontend customer overview
+                Live customer overview
               </h2>
               <div className="mt-5 space-y-3">
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
@@ -683,31 +699,6 @@ function Account() {
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                  <BadgeCheck size={20} />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                    Frontend Ready
-                  </p>
-                  <h2 className="mt-2 text-2xl font-black text-slate-950">
-                    Built for backend integration later
-                  </h2>
-                </div>
-              </div>
-              <div className="mt-5 space-y-3 text-sm leading-7 text-slate-600">
-                <p>
-                  This account hub already gives users a clean experience for profile,
-                  addresses, wishlist, orders, and support before APIs are connected.
-                </p>
-                <p>
-                  Once backend work starts, this page is ready for real persistence,
-                  live account sync, and multi-device activity.
-                </p>
-              </div>
-            </div>
           </div>
         </section>
       </div>
