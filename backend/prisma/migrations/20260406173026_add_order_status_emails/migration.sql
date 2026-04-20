@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "EmailLogType" ADD VALUE 'ORDER_STATUS_UPDATE';
