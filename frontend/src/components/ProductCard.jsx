@@ -76,6 +76,8 @@ function ProductCard({ product, mode, variant = "default" }) {
           src={activeImage}
           alt={product.name}
           onError={handleImageError}
+          loading="lazy"
+          decoding="async"
           className={`w-full object-cover transition duration-500 group-hover:scale-105 ${
             isFeatured ? "h-64 sm:h-72" : "h-52 sm:h-56"
           }`}

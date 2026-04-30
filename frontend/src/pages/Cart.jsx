@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  LogIn,
   Minus,
   Plus,
   ShieldCheck,
@@ -10,6 +11,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import useCart from "../context/useCart";
+import useCustomerAuth from "../context/useCustomerAuth";
 import { getProductFallbackImage } from "../lib/productMedia";
 
 const formatCurrency = (value) =>
@@ -17,7 +19,16 @@ const formatCurrency = (value) =>
 
 function Cart() {
   const { cart, total, removeFromCart, updateQuantity } = useCart();
+  const { customer } = useCustomerAuth();
   const navigate = useNavigate();
+
+  const handleProceedToCheckout = () => {
+    if (!customer) {
+      navigate("/account/login?redirect=/checkout");
+      return;
+    }
+    navigate("/checkout");
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.08),_transparent_30%),linear-gradient(180deg,_#f8fafc_0%,_#ecfeff_55%,_#f8fafc_100%)] px-4 py-8 sm:px-6 lg:px-8">
@@ -287,12 +298,24 @@ function Cart() {
                 </div>
 
                 <button
-                  onClick={() => navigate("/checkout")}
+                  onClick={handleProceedToCheckout}
                   className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
                 >
                   Proceed to Shipping
                   <ArrowRight size={16} />
                 </button>
+
+                {!customer && (
+                  <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-center">
+                    <p className="flex items-center justify-center gap-2 text-sm font-semibold text-amber-800">
+                      <LogIn size={15} />
+                      Login required to checkout
+                    </p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      Your cart items are saved and will sync to your account after login.
+                    </p>
+                  </div>
+                )}
               </div>
 
             </aside>

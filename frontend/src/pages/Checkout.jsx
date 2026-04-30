@@ -6,7 +6,7 @@ import {
   Truck,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import useCart from "../context/useCart";
 import useCustomerAuth from "../context/useCustomerAuth";
@@ -81,7 +81,7 @@ const getShippingValidationMessage = (shipping) => {
 
 function Checkout() {
   const { cart, total } = useCart();
-  const { customer } = useCustomerAuth();
+  const { customer, loading: customerLoading } = useCustomerAuth();
   const customerEmail = customer?.email || "";
   const customerId = customer?.id || null;
   const customerName = customer?.name || "";
@@ -90,6 +90,22 @@ function Checkout() {
   const saveTimerRef = useRef(null);
   const hydratedRef = useRef(false);
   const [isHydrated, setIsHydrated] = useState(false);
+
+  if (!customerLoading && !customer) {
+    return <Navigate to="/account/login?redirect=/checkout" replace />;
+  }
+
+  if (customerLoading) {
+    return (
+      <div className="min-h-screen bg-[#f7f7f2]">
+        <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4">
+          <div className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-500 shadow-sm">
+            Loading BuyBlink...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const [shipping, setShipping] = useState(() => {
     const savedShipping = readLocalShipping();

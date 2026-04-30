@@ -1,6 +1,6 @@
 import { Heart, MapPin, ShoppingBag } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AuthShell from "../components/AuthShell";
 import { AUTH_FIELD_BASE, AUTH_VARIANTS } from "../components/authTheme";
 import useCustomerAuth from "../context/useCustomerAuth";
@@ -29,6 +29,8 @@ const customerHighlights = [
 function UserRegister() {
   const { registerCustomer } = useCustomerAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectPath = searchParams.get("redirect") || "";
   const theme = AUTH_VARIANTS.customer;
   const [formData, setFormData] = useState({
     name: "",
@@ -51,7 +53,7 @@ function UserRegister() {
     const success = await registerCustomer(formData);
 
     if (success) {
-      navigate("/account");
+      navigate(redirectPath || "/account");
     }
   };
 
@@ -71,7 +73,7 @@ function UserRegister() {
       highlights={customerHighlights}
       alternateQuestion="Already have a customer account?"
       alternateText="Sign in here"
-      alternateTo="/account/login"
+      alternateTo={redirectPath ? `/account/login?redirect=${encodeURIComponent(redirectPath)}` : "/account/login"}
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <label className="block">

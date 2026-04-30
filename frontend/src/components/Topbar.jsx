@@ -53,8 +53,8 @@ function Topbar() {
   return (
     <header className="border-b border-slate-200/70 bg-white/80 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 sm:tracking-[0.24em]">
             {isAdmin ? "BuyBlink Support Admin" : user?.storeName || user?.name}
           </p>
           <h1 className="mt-1 text-2xl font-bold text-slate-950">

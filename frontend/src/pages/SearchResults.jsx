@@ -1,31 +1,48 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
-import { normalizeProductRecord } from "../lib/marketplaceStore";
-import { productApi } from "../services/api";
+import { getFastMarketplaceProducts } from "../lib/fastProducts";
+import {
+  syncMarketplaceProducts,
+} from "../lib/marketplaceStore";
+
+const getVisibleProducts = (products, searchTerm) =>
+  products.filter((product) =>
+    searchTerm
+      ? [product.name, product.description, product.category, product.sellerName]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(searchTerm.toLowerCase()))
+      : true,
+  );
 
 function SearchResults() {
   const [searchParams] = useSearchParams();
   const searchTerm = searchParams.get("search")?.trim() || "";
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState(() =>
+    getVisibleProducts(getFastMarketplaceProducts(), searchTerm),
+  );
+  const [loading, setLoading] = useState(products.length === 0);
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    const loadProducts = async () => {
-      setLoading(true);
-      setLoadError("");
+    const fastProducts = getVisibleProducts(getFastMarketplaceProducts(), searchTerm);
 
+    setProducts(fastProducts);
+    setLoading(fastProducts.length === 0);
+    setLoadError("");
+
+    const loadProducts = async () => {
       try {
-        const response = await productApi.list({
+        const nextProducts = await syncMarketplaceProducts({
           section: "all",
           search: searchTerm,
         });
 
-        setProducts((response.data || []).map(normalizeProductRecord));
+        setProducts(getVisibleProducts(nextProducts, searchTerm));
       } catch (error) {
-        setLoadError(error.message || "Unable to load search results right now.");
-        setProducts([]);
+        if (fastProducts.length === 0) {
+          setLoadError(error.message || "Unable to load search results right now.");
+        }
       } finally {
         setLoading(false);
       }
@@ -71,7 +88,7 @@ function SearchResults() {
               <ProductCard
                 key={item.id}
                 product={item}
-                mode={item.catalogType === "WHOLESALE" ? "wholesale" : "retail"}
+                mode={item.catalogType === "wholesale" ? "wholesale" : "retail"}
               />
             ))}
       </div>

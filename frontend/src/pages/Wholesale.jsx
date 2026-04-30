@@ -1,40 +1,72 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
-import { normalizeProductRecord } from "../lib/marketplaceStore";
-import { productApi } from "../services/api";
+import { getFastMarketplaceProductsForSection } from "../lib/fastProducts";
+import {
+  syncMarketplaceProducts,
+} from "../lib/marketplaceStore";
+
+const getVisibleProducts = (products, searchTerm, selectedCategory) =>
+  products.filter((product) => {
+    const matchesCategory = selectedCategory
+      ? product.category === selectedCategory
+      : true;
+    const matchesSearch = searchTerm
+      ? [product.name, product.description, product.category, product.sellerName]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(searchTerm))
+      : true;
+
+    return matchesCategory && matchesSearch;
+  });
 
 const Wholesale = () => {
   const [searchParams] = useSearchParams();
   const searchTerm = searchParams.get("search")?.trim().toLowerCase() || "";
   const selectedCategory = searchParams.get("category")?.trim() || "";
-  const [wholesaleProducts, setWholesaleProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [wholesaleProducts, setWholesaleProducts] = useState(() =>
+    getVisibleProducts(
+      getFastMarketplaceProductsForSection("wholesale"),
+      searchTerm,
+      selectedCategory,
+    ),
+  );
+  const [loading, setLoading] = useState(wholesaleProducts.length === 0);
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    const loadProducts = async () => {
-      setLoading(true);
-      setLoadError("");
+    const fastProducts = getVisibleProducts(
+      getFastMarketplaceProductsForSection("wholesale"),
+      searchTerm,
+      selectedCategory,
+    );
 
+    setWholesaleProducts(fastProducts);
+    setLoading(fastProducts.length === 0);
+    setLoadError("");
+
+    const loadProducts = async () => {
       try {
-        const response = await productApi.list({
+        const products = await syncMarketplaceProducts({
           section: "wholesale",
           search: searchParams.get("search")?.trim() || "",
           category: selectedCategory,
         });
 
-        setWholesaleProducts((response.data || []).map(normalizeProductRecord));
+        setWholesaleProducts(
+          getVisibleProducts(products, searchTerm, selectedCategory),
+        );
       } catch (error) {
-        setLoadError(error.message || "Unable to load wholesale products right now.");
-        setWholesaleProducts([]);
+        if (fastProducts.length === 0) {
+          setLoadError(error.message || "Unable to load wholesale products right now.");
+        }
       } finally {
         setLoading(false);
       }
     };
 
     void loadProducts();
-  }, [searchParams, selectedCategory]);
+  }, [searchParams, searchTerm, selectedCategory]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">

@@ -1,40 +1,72 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
-import { normalizeProductRecord } from "../lib/marketplaceStore";
-import { productApi } from "../services/api";
+import { getFastMarketplaceProductsForSection } from "../lib/fastProducts";
+import {
+  syncMarketplaceProducts,
+} from "../lib/marketplaceStore";
+
+const getVisibleProducts = (products, searchTerm, selectedCategory) =>
+  products.filter((product) => {
+    const matchesCategory = selectedCategory
+      ? product.category === selectedCategory
+      : true;
+    const matchesSearch = searchTerm
+      ? [product.name, product.description, product.category, product.sellerName]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(searchTerm))
+      : true;
+
+    return matchesCategory && matchesSearch;
+  });
 
 const Retail = () => {
   const [searchParams] = useSearchParams();
   const searchTerm = searchParams.get("search")?.trim().toLowerCase() || "";
   const selectedCategory = searchParams.get("category")?.trim() || "";
-  const [retailProducts, setRetailProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [retailProducts, setRetailProducts] = useState(() =>
+    getVisibleProducts(
+      getFastMarketplaceProductsForSection("retail"),
+      searchTerm,
+      selectedCategory,
+    ),
+  );
+  const [loading, setLoading] = useState(retailProducts.length === 0);
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    const loadProducts = async () => {
-      setLoading(true);
-      setLoadError("");
+    const fastProducts = getVisibleProducts(
+      getFastMarketplaceProductsForSection("retail"),
+      searchTerm,
+      selectedCategory,
+    );
 
+    setRetailProducts(fastProducts);
+    setLoading(fastProducts.length === 0);
+    setLoadError("");
+
+    const loadProducts = async () => {
       try {
-        const response = await productApi.list({
+        const products = await syncMarketplaceProducts({
           section: "retail",
           search: searchParams.get("search")?.trim() || "",
           category: selectedCategory,
         });
 
-        setRetailProducts((response.data || []).map(normalizeProductRecord));
+        setRetailProducts(
+          getVisibleProducts(products, searchTerm, selectedCategory),
+        );
       } catch (error) {
-        setLoadError(error.message || "Unable to load retail products right now.");
-        setRetailProducts([]);
+        if (fastProducts.length === 0) {
+          setLoadError(error.message || "Unable to load retail products right now.");
+        }
       } finally {
         setLoading(false);
       }
     };
 
     void loadProducts();
-  }, [searchParams, selectedCategory]);
+  }, [searchParams, searchTerm, selectedCategory]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">

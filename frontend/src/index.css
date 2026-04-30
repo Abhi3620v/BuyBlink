@@ -21,15 +21,46 @@
 
   html {
     background: var(--color-brand-ivory-soft);
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
     min-height: 100vh;
+    overflow-x: hidden;
     background:
       radial-gradient(circle at top left, rgba(16, 185, 129, 0.08), transparent 28%),
       radial-gradient(circle at top right, rgba(214, 178, 94, 0.1), transparent 24%),
       linear-gradient(180deg, var(--color-brand-ivory-soft) 0%, var(--color-brand-ivory) 100%);
     color: var(--color-brand-slate);
+  }
+
+  #root {
+    min-height: 100vh;
+    width: 100%;
+    overflow-x: clip;
+  }
+
+  img,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    min-width: 0;
   }
 
   ::selection {

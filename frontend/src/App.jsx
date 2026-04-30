@@ -62,7 +62,22 @@ function ProtectedDashboard() {
 
 function App() {
   useEffect(() => {
-    void syncMarketplaceProducts().catch(() => {});
+    const refreshProducts = () => {
+      void syncMarketplaceProducts().catch(() => {});
+    };
+    const idleCallback =
+      "requestIdleCallback" in window
+        ? window.requestIdleCallback(refreshProducts, { timeout: 3000 })
+        : window.setTimeout(refreshProducts, 1500);
+
+    return () => {
+      if ("cancelIdleCallback" in window && typeof idleCallback === "number") {
+        window.cancelIdleCallback(idleCallback);
+        return;
+      }
+
+      window.clearTimeout(idleCallback);
+    };
   }, []);
 
   return (

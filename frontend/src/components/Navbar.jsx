@@ -18,7 +18,7 @@ import useCustomerAuth from "../context/useCustomerAuth";
 import BrandLogo from "./BrandLogo";
 
 const actionCardBase =
-  "group inline-flex h-11 items-center gap-2 rounded-full border px-3.5 text-sm font-semibold text-white transition duration-200";
+  "group inline-flex h-11 items-center gap-2 rounded-full border px-3 text-sm font-semibold text-white transition duration-200 sm:px-3.5";
 
 function Navbar() {
   const { user: seller, logout: logoutSeller } = useAuth();
@@ -77,15 +77,19 @@ function Navbar() {
   const showAdminSection = !isLoggedIn || Boolean(seller && seller.role === "ADMIN");
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-[color:rgba(214,178,94,0.18)] bg-[linear-gradient(135deg,rgba(15,23,42,0.98)_0%,rgba(17,24,39,0.96)_60%,rgba(17,46,37,0.94)_100%)] px-3 py-2 text-white backdrop-blur md:px-5">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 lg:flex-nowrap">
-          <BrandLogo onClick={closePanels} compact />
+    <nav className="sticky top-0 z-50 border-b border-[color:rgba(214,178,94,0.18)] bg-[linear-gradient(135deg,rgba(15,23,42,0.98)_0%,rgba(17,24,39,0.96)_60%,rgba(17,46,37,0.94)_100%)] px-2 py-2 text-white backdrop-blur sm:px-3 md:px-5">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-1.5 sm:gap-2 lg:flex-nowrap">
+          <BrandLogo
+            onClick={closePanels}
+            compact
+            className="order-1 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] lg:order-none lg:flex-none lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+          />
 
           <NavLink
             to="/retail"
             onClick={closePanels}
             className={({ isActive }) =>
-              `${actionCardBase} shrink-0 ${
+              `${actionCardBase} order-2 flex-1 justify-center lg:order-none lg:flex-none lg:justify-start ${
                 isActive
                   ? "border-[color:rgba(16,185,129,0.58)] bg-[color:rgba(16,185,129,0.18)] shadow-[0_10px_25px_rgba(16,185,129,0.12)]"
                   : "border-white/10 bg-white/5 hover:border-[color:rgba(16,185,129,0.46)] hover:bg-[color:rgba(16,185,129,0.12)]"
@@ -102,7 +106,7 @@ function Navbar() {
             to="/wholesale"
             onClick={closePanels}
             className={({ isActive }) =>
-              `${actionCardBase} shrink-0 ${
+              `${actionCardBase} order-2 flex-1 justify-center lg:order-none lg:flex-none lg:justify-start ${
                 isActive
                   ? "border-[color:rgba(214,178,94,0.58)] bg-[color:rgba(214,178,94,0.18)] shadow-[0_10px_25px_rgba(214,178,94,0.14)]"
                   : "border-white/10 bg-white/5 hover:border-[color:rgba(214,178,94,0.46)] hover:bg-[color:rgba(214,178,94,0.12)]"
@@ -118,7 +122,7 @@ function Navbar() {
           <form
             onSubmit={handleSearch}
             key={`${location.pathname}-${activeSearch}`}
-            className="order-last flex min-w-0 w-full flex-1 items-center gap-2 sm:order-none sm:min-w-[15rem]"
+            className="order-last flex w-full flex-none basis-full items-center gap-2 lg:order-none lg:min-w-[15rem] lg:flex-1 lg:basis-auto"
           >
             <div className="relative min-w-0 flex-1">
               <Search
@@ -130,7 +134,7 @@ function Navbar() {
                 type="search"
                 defaultValue={activeSearch}
                 placeholder="Search products or deals"
-                className="w-full rounded-full border border-white/10 bg-[color:rgba(255,255,255,0.08)] py-2 pl-9 pr-4 text-sm text-white outline-none transition placeholder:text-[color:rgba(255,255,255,0.45)] focus:border-[var(--color-brand-champagne)] focus:ring-2 focus:ring-[color:rgba(214,178,94,0.18)]"
+                className="w-full rounded-full border border-white/10 bg-[color:rgba(255,255,255,0.08)] py-2.5 pl-9 pr-4 text-sm text-white outline-none transition placeholder:text-[color:rgba(255,255,255,0.45)] focus:border-[var(--color-brand-champagne)] focus:ring-2 focus:ring-[color:rgba(214,178,94,0.18)] lg:py-2"
               />
             </div>
 
@@ -142,7 +146,7 @@ function Navbar() {
             </button>
           </form>
 
-          <div className="relative shrink-0">
+          <div className="relative order-1 shrink-0 lg:order-none">
             <button
               type="button"
               onClick={() => togglePanel("login")}
@@ -155,7 +159,7 @@ function Navbar() {
             </button>
 
             {isPanelOpen("login") && (
-              <div className="absolute right-0 top-[calc(100%+10px)] z-50 max-h-[calc(100vh-120px)] w-[min(24rem,calc(100vw-1rem))] overflow-y-auto rounded-3xl border border-[color:rgba(214,178,94,0.16)] bg-[linear-gradient(180deg,rgba(15,23,42,0.98)_0%,rgba(23,31,48,0.98)_100%)] p-5 shadow-2xl shadow-slate-950/60">
+              <div className="fixed left-1/2 top-[4.75rem] z-50 max-h-[calc(100vh-5.25rem)] w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-3xl border border-[color:rgba(214,178,94,0.16)] bg-[linear-gradient(180deg,rgba(15,23,42,0.98)_0%,rgba(23,31,48,0.98)_100%)] p-3 shadow-2xl shadow-slate-950/60 sm:w-[24rem] sm:p-4 lg:absolute lg:left-auto lg:right-0 lg:top-[calc(100%+10px)] lg:max-h-[calc(100vh-120px)] lg:w-[min(24rem,calc(100vw-1rem))] lg:translate-x-0 lg:p-5">
                 <div className="mb-5 flex items-start gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[color:rgba(214,178,94,0.12)] text-[var(--color-brand-champagne-soft)]">
                     <UserCircle2 size={18} strokeWidth={2.2} />
@@ -214,7 +218,7 @@ function Navbar() {
                           <ChevronRight size={16} />
                         </Link>
                         <Link
-                          to="/"
+                          to="/wishlist"
                           onClick={closePanels}
                           className="flex items-center justify-between rounded-full border border-[color:rgba(255,255,255,0.12)] px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-[color:rgba(214,178,94,0.28)] hover:bg-[color:rgba(255,255,255,0.06)]"
                         >
@@ -387,7 +391,7 @@ function Navbar() {
           <Link
             to="/cart"
             onClick={closePanels}
-            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-[color:rgba(255,255,255,0.06)] text-slate-100 transition hover:border-[color:rgba(214,178,94,0.38)] hover:text-[var(--color-brand-champagne-soft)]"
+            className="relative order-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-[color:rgba(255,255,255,0.06)] text-slate-100 transition hover:border-[color:rgba(214,178,94,0.38)] hover:text-[var(--color-brand-champagne-soft)] lg:order-none"
           >
             <ShoppingCart size={18} />
 
@@ -397,6 +401,7 @@ function Navbar() {
               </span>
             )}
           </Link>
+          <div className="order-1 h-0 basis-full lg:hidden" />
       </div>
     </nav>
   );

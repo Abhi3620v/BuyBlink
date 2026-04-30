@@ -611,7 +611,7 @@ function SupportChat() {
                   )}
                 </div>
 
-                <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
+                <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
                   {selectedConversation.messages?.map((message) => {
                     const isCustomer = message.senderType === "customer";
 
@@ -621,7 +621,7 @@ function SupportChat() {
                         className={`flex ${isCustomer ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-2xl rounded-[1.5rem] px-5 py-4 shadow-sm ${
+                          className={`max-w-full rounded-[1.5rem] px-4 py-4 shadow-sm sm:max-w-2xl sm:px-5 ${
                             isCustomer
                               ? "bg-slate-950 text-white"
                               : "border border-slate-200 bg-slate-50 text-slate-900"

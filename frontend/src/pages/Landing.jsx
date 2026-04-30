@@ -15,6 +15,7 @@ import useAuth from "../context/useAuth";
 import ProductCard from "../components/ProductCard";
 import Footer from "../components/Footer";
 import BrandLogo from "../components/BrandLogo";
+import { getDemoMarketplaceProducts } from "../lib/fastProducts";
 import {
   getProductFallbackImage,
   resolveProductMediaUrl,
@@ -119,7 +120,7 @@ const testimonials = [
 const heroSlides = [
   {
     id: "hero-1",
-    image: "/product-images/eco-bamboo-bottle-platform.jpg",
+    image: "/product-images/eco-bamboo-bottle-platform-optimized.webp",
     badge: "Retail Spotlight",
     title: "Premium product visuals that feel ready to shop.",
     description:
@@ -167,6 +168,23 @@ const normalizeLandingReview = (review) => ({
       }
     : null,
 });
+const getFallbackLandingData = () => {
+  const products = getDemoMarketplaceProducts();
+
+  return {
+    stats: [
+      { value: products.length, label: "Live products" },
+      {
+        value: new Set(products.map((product) => product.sellerName)).size,
+        label: "Seller brands",
+      },
+      { value: 0, label: "Orders placed" },
+      { value: 0, label: "Customer reviews" },
+    ],
+    featuredProducts: products.slice(0, 6),
+    recentReviews: [],
+  };
+};
 const formatReviewDate = (value) =>
   new Date(value).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -177,10 +195,16 @@ const formatReviewDate = (value) =>
 function Landing() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [landingStats, setLandingStats] = useState([]);
-  const [featuredProducts, setFeaturedProducts] = useState([]);
-  const [recentReviews, setRecentReviews] = useState([]);
-  const [landingLoading, setLandingLoading] = useState(true);
+  const [landingStats, setLandingStats] = useState(
+    () => getFallbackLandingData().stats,
+  );
+  const [featuredProducts, setFeaturedProducts] = useState(
+    () => getFallbackLandingData().featuredProducts,
+  );
+  const [recentReviews, setRecentReviews] = useState(
+    () => getFallbackLandingData().recentReviews,
+  );
+  const [landingLoading, setLandingLoading] = useState(false);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const featuredSectionRef = useRef(null);
   const reviewsSectionRef = useRef(null);
@@ -254,7 +278,7 @@ function Landing() {
   return (
     <div className="bg-[var(--color-brand-ivory)] text-[var(--color-brand-slate)]">
       <section className="relative overflow-hidden border-b border-[color:rgba(214,178,94,0.18)] bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.2),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(214,178,94,0.18),_transparent_28%),linear-gradient(180deg,var(--color-brand-ivory-soft)_0%,var(--color-brand-ivory)_100%)]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:gap-14 sm:px-6 sm:py-20 lg:grid-cols-[1.08fr,0.92fr] lg:items-center">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:gap-14 sm:px-6 sm:py-20 lg:grid-cols-[1.08fr,0.92fr] lg:items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[color:rgba(214,178,94,0.32)] bg-[color:rgba(255,255,255,0.85)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-[var(--color-brand-champagne-deep)] shadow-sm">
               <Sparkles size={14} />
@@ -265,11 +289,11 @@ function Landing() {
               <BrandLogo theme="light" />
             </div>
 
-            <h1 className="mt-8 max-w-3xl text-4xl font-black leading-tight tracking-tight text-[var(--color-brand-slate)] sm:text-5xl md:text-6xl">
+            <h1 className="mt-7 max-w-3xl text-[2.55rem] font-black leading-[1.12] tracking-tight text-[var(--color-brand-slate)] sm:mt-8 sm:text-5xl sm:leading-tight md:text-6xl">
               One premium marketplace for retail shoppers and wholesale buyers.
             </h1>
 
-            <p className="mt-6 max-w-2xl text-base leading-7 text-[var(--color-brand-muted)] sm:text-lg sm:leading-8">
+            <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--color-brand-muted)] sm:mt-6 sm:text-lg sm:leading-8">
               BuyBlink combines premium presentation, elegant product discovery,
               and clean checkout into a storefront that feels professional from
               the first scroll to the final purchase.
@@ -292,7 +316,7 @@ function Landing() {
               </Link>
             </div>
 
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            <div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-3">
               {(landingStats.slice(0, 3).length > 0
                 ? landingStats.slice(0, 3)
                 : [
@@ -317,7 +341,7 @@ function Landing() {
           </div>
 
           <div className="relative">
-            <div className="absolute -left-6 top-10 h-24 w-24 rounded-full bg-[color:rgba(16,185,129,0.2)] blur-3xl" />
+            <div className="absolute left-0 top-10 h-24 w-24 rounded-full bg-[color:rgba(16,185,129,0.2)] blur-3xl sm:-left-6" />
             <div className="absolute -right-3 bottom-10 h-28 w-28 rounded-full bg-[color:rgba(214,178,94,0.26)] blur-3xl" />
 
             <div className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/95 p-5 shadow-[0_28px_70px_rgba(15,23,42,0.12)]">
@@ -334,6 +358,9 @@ function Landing() {
                     <img
                       src={slide.image}
                       alt={slide.title}
+                      loading={index === 0 ? "eager" : "lazy"}
+                      fetchPriority={index === 0 ? "high" : "auto"}
+                      decoding="async"
                       className="h-full w-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-slate-950/12 to-transparent" />
@@ -419,7 +446,7 @@ function Landing() {
               <Link
                 key={category.title}
                 to={category.to}
-                className={`group rounded-[1.8rem] border border-[color:rgba(15,23,42,0.08)] bg-gradient-to-br ${category.accent} p-8 shadow-sm transition hover:-translate-y-1 hover:border-[color:rgba(214,178,94,0.22)] hover:shadow-xl`}
+                className={`group rounded-[1.8rem] border border-[color:rgba(15,23,42,0.08)] bg-gradient-to-br ${category.accent} p-6 shadow-sm transition hover:-translate-y-1 hover:border-[color:rgba(214,178,94,0.22)] hover:shadow-xl sm:p-8`}
               >
                 <h3 className="text-2xl font-black text-[var(--color-brand-slate)]">
                   {category.title}

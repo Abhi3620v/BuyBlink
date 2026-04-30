@@ -431,7 +431,7 @@ function SupportDesk() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <div className="relative min-w-[260px]">
+            <div className="relative w-full min-w-0 sm:min-w-[260px]">
               <Search
                 size={16}
                 className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -648,8 +648,8 @@ function SupportDesk() {
 
         <div className="rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
           {selectedChat ? (
-            <div className="flex h-full min-h-[760px] flex-col">
-              <div className="border-b border-slate-200 px-6 py-5">
+            <div className="flex h-full min-h-[620px] flex-col md:min-h-[760px]">
+              <div className="border-b border-slate-200 px-4 py-5 sm:px-6">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
@@ -715,7 +715,7 @@ function SupportDesk() {
                 )}
               </div>
 
-              <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
+              <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
                 {selectedChat.messages?.map((message) => {
                   const isAgent = message.senderType === "agent";
 
@@ -725,7 +725,7 @@ function SupportDesk() {
                       className={`flex ${isAgent ? "justify-start" : "justify-end"}`}
                     >
                       <div
-                        className={`max-w-2xl rounded-[1.5rem] px-5 py-4 shadow-sm ${
+                        className={`max-w-full rounded-[1.5rem] px-4 py-4 shadow-sm sm:max-w-2xl sm:px-5 ${
                           isAgent
                             ? "border border-slate-200 bg-slate-50 text-slate-900"
                             : "bg-slate-950 text-white"
@@ -763,7 +763,7 @@ function SupportDesk() {
                 })}
               </div>
 
-              <div className="border-t border-slate-200 px-6 py-5">
+              <div className="border-t border-slate-200 px-4 py-5 sm:px-6">
                 <form onSubmit={handleSendReply} className="space-y-4">
                   <textarea
                     rows={4}
@@ -824,7 +824,7 @@ function SupportDesk() {
               </div>
             </div>
           ) : (
-            <div className="flex min-h-[760px] flex-col items-center justify-center px-6 py-12 text-center">
+            <div className="flex min-h-[520px] flex-col items-center justify-center px-4 py-12 text-center md:min-h-[760px] md:px-6">
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                 <Headset size={30} />
               </div>

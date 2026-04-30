@@ -1,6 +1,6 @@
 import { Heart, LifeBuoy, Package } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AuthShell from "../components/AuthShell";
 import { AUTH_FIELD_BASE, AUTH_VARIANTS } from "../components/authTheme";
 import useCustomerAuth from "../context/useCustomerAuth";
@@ -29,6 +29,8 @@ const customerHighlights = [
 function UserLogin() {
   const { loginCustomer } = useCustomerAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectPath = searchParams.get("redirect") || "";
   const theme = AUTH_VARIANTS.customer;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,7 +41,7 @@ function UserLogin() {
     const success = await loginCustomer(email, password);
 
     if (success) {
-      navigate("/account");
+      navigate(redirectPath || "/account");
     }
   };
 
@@ -59,9 +61,16 @@ function UserLogin() {
       highlights={customerHighlights}
       alternateQuestion="New to BuyBlink?"
       alternateText="Create customer account"
-      alternateTo="/account/register"
+      alternateTo={redirectPath ? `/account/register?redirect=${encodeURIComponent(redirectPath)}` : "/account/register"}
     >
       <form onSubmit={handleSubmit} className="space-y-5">
+        {redirectPath && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <p className="font-semibold">Please login to continue</p>
+            <p className="mt-1 text-amber-700">Sign in to your account to proceed with your order. Your cart items are saved.</p>
+          </div>
+        )}
+
         <label className="block">
           <span className="text-sm font-semibold text-slate-700">Email</span>
           <input

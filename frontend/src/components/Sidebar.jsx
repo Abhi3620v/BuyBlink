@@ -33,11 +33,11 @@ function Sidebar() {
 
   return (
     <aside className="border-b border-slate-800 bg-slate-950/95 lg:w-80 lg:shrink-0 lg:border-b-0 lg:border-r">
-      <div className="flex h-full flex-col px-5 py-6">
+      <div className="flex h-full flex-col px-4 py-4 sm:px-5 sm:py-6">
         <div className="flex items-center justify-between gap-3">
           <BrandLogo compact theme="dark" />
           <span
-            className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] ${
+            className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] sm:tracking-[0.24em] ${
               isAdmin
                 ? "border border-cyan-400/20 bg-cyan-400/10 text-cyan-200"
                 : "border border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
@@ -47,7 +47,7 @@ function Sidebar() {
           </span>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-slate-800 bg-white/[0.03] p-4">
+        <div className="mt-4 rounded-3xl border border-slate-800 bg-white/[0.03] p-4 sm:mt-6">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-400 text-slate-950">
               <Store size={20} strokeWidth={2.2} />
@@ -65,7 +65,7 @@ function Sidebar() {
           </div>
         </div>
 
-        <nav className="mt-8 space-y-2">
+        <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:mt-8 lg:block lg:space-y-2 lg:overflow-visible lg:pb-0">
           {navItems.map((item) => {
             const ItemIcon = item.icon;
 
@@ -75,28 +75,28 @@ function Sidebar() {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex items-center justify-between rounded-2xl px-4 py-3 transition ${
+                  `flex min-w-[9.5rem] shrink-0 items-center justify-between rounded-2xl px-3 py-2.5 transition lg:min-w-0 lg:px-4 lg:py-3 ${
                     isActive
                       ? "bg-emerald-400/12 text-white shadow-[0_18px_40px_rgba(16,185,129,0.12)]"
                       : "text-slate-300 hover:bg-white/[0.04] hover:text-white"
                   }`
                 }
               >
-                <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/[0.05]">
+                <div className="flex min-w-0 items-center gap-2 lg:gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/[0.05] lg:h-10 lg:w-10">
                     <ItemIcon size={18} />
                   </span>
-                  <span className="font-medium">{item.label}</span>
+                  <span className="truncate text-sm font-medium lg:text-base">{item.label}</span>
                 </div>
 
-                <ArrowUpRight size={16} className="text-slate-500" />
+                <ArrowUpRight size={16} className="hidden shrink-0 text-slate-500 lg:block" />
               </NavLink>
             );
           })}
         </nav>
 
         {!isAdmin && (
-          <div className="mt-auto space-y-3 pt-8">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:mt-auto lg:block lg:space-y-3 lg:pt-8">
             <Link
               to="/retail"
               className="flex items-center justify-between rounded-2xl border border-slate-800 bg-white/[0.03] px-4 py-3 text-sm font-medium text-slate-200 transition hover:border-emerald-400/30 hover:text-white"

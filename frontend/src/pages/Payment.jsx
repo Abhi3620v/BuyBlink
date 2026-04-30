@@ -7,7 +7,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import useCart from "../context/useCart";
 import useCustomerAuth from "../context/useCustomerAuth";
@@ -99,12 +99,28 @@ const loadRazorpayScript = () =>
 
 function Payment() {
   const { cart, total, clearCart } = useCart();
-  const { customer } = useCustomerAuth();
+  const { customer, loading: customerLoading } = useCustomerAuth();
   const navigate = useNavigate();
   const shipping = readShippingSnapshot();
   const [selectedMethod, setSelectedMethod] = useState("UPI");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  if (!customerLoading && !customer) {
+    return <Navigate to="/account/login?redirect=/payment" replace />;
+  }
+
+  if (customerLoading) {
+    return (
+      <div className="min-h-screen bg-[#f7f7f2]">
+        <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4">
+          <div className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-500 shadow-sm">
+            Loading BuyBlink...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const shippingValidationMessage = getShippingValidationMessage(shipping);
   const shippingReady = !shippingValidationMessage;
