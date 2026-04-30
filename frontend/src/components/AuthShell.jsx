@@ -19,8 +19,8 @@ function AuthShell({
   const theme = AUTH_VARIANTS[variant] || AUTH_VARIANTS.customer;
 
   return (
-    <div className={`min-h-screen px-4 py-6 sm:px-6 lg:px-8 ${theme.surface}`}>
-      <div className="mx-auto flex max-w-7xl items-center justify-end pb-6">
+    <div className={`min-h-screen px-4 py-4 sm:py-6 sm:px-6 lg:px-8 ${theme.surface}`}>
+      <div className="mx-auto flex max-w-7xl items-center justify-end pb-4 sm:pb-6">
         <Link
           to="/"
           className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-950 min-[380px]:px-4"
@@ -30,8 +30,46 @@ function AuthShell({
         </Link>
       </div>
 
+      {/* Mobile: form-first layout (like Flipkart). Desktop: side-by-side */}
       <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[minmax(0,1.05fr),520px]">
-        <section className="overflow-hidden rounded-[2.25rem] border border-white/80 bg-white/78 p-6 text-slate-950 shadow-[0_30px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-8">
+
+        {/* Form section — appears FIRST on mobile, SECOND on desktop */}
+        <section className="order-1 lg:order-2 rounded-[1.75rem] sm:rounded-[2.25rem] border border-slate-200 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.12)] sm:p-8">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                Secure Access
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">
+                {formTitle}
+              </h2>
+              <p className="mt-2 text-sm leading-7 text-slate-500 sm:mt-3">
+                {formDescription}
+              </p>
+            </div>
+
+            <div
+              className={`hidden h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${theme.panel} text-slate-950 sm:flex`}
+            >
+              <ArrowRight size={20} />
+            </div>
+          </div>
+
+          <div className="mt-6 sm:mt-8">{children}</div>
+
+          <p className="mt-5 text-center text-sm text-slate-500 sm:mt-6">
+            {alternateQuestion}{" "}
+            <Link
+              to={alternateTo}
+              className={`font-semibold ${variant === "seller" ? "text-amber-700 hover:text-amber-800" : "text-cyan-700 hover:text-cyan-800"}`}
+            >
+              {alternateText}
+            </Link>
+          </p>
+        </section>
+
+        {/* Info section — hidden on mobile, visible on desktop (like Flipkart) */}
+        <section className="order-2 lg:order-1 hidden lg:block overflow-hidden rounded-[2.25rem] border border-white/80 bg-white/78 p-6 text-slate-950 shadow-[0_30px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-8">
           <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] ${theme.badge}`}>
             <ShieldCheck size={14} />
             {badge}
@@ -98,40 +136,6 @@ function AuthShell({
               </div>
             </div>
           </div>
-        </section>
-
-        <section className="rounded-[2.25rem] border border-slate-200 bg-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.12)] sm:p-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Secure Access
-              </p>
-              <h2 className="mt-2 text-3xl font-black text-slate-950">
-                {formTitle}
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-slate-500">
-                {formDescription}
-              </p>
-            </div>
-
-            <div
-              className={`hidden h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${theme.panel} text-slate-950 sm:flex`}
-            >
-              <ArrowRight size={20} />
-            </div>
-          </div>
-
-          <div className="mt-8">{children}</div>
-
-          <p className="mt-6 text-center text-sm text-slate-500">
-            {alternateQuestion}{" "}
-            <Link
-              to={alternateTo}
-              className={`font-semibold ${variant === "seller" ? "text-amber-700 hover:text-amber-800" : "text-cyan-700 hover:text-cyan-800"}`}
-            >
-              {alternateText}
-            </Link>
-          </p>
         </section>
       </div>
     </div>

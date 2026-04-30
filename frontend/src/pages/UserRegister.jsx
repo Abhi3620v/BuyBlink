@@ -1,9 +1,9 @@
-import { Heart, MapPin, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AuthShell from "../components/AuthShell";
 import { AUTH_FIELD_BASE, AUTH_VARIANTS } from "../components/authTheme";
 import useCustomerAuth from "../context/useCustomerAuth";
+import { Heart, MapPin, ShoppingBag } from "lucide-react";
 
 const customerHighlights = [
   {
@@ -32,6 +32,7 @@ function UserRegister() {
   const [searchParams] = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "";
   const theme = AUTH_VARIANTS.customer;
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -49,12 +50,14 @@ function UserRegister() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setIsLoading(true);
 
     const success = await registerCustomer(formData);
 
     if (success) {
       navigate(redirectPath || "/account");
     }
+    setIsLoading(false);
   };
 
   return (
@@ -62,20 +65,20 @@ function UserRegister() {
       variant="customer"
       badge="Customer Registration"
       title="Create your BuyBlink customer account and shop with confidence."
-      description="Sign up once to unlock your premium buyer hub with orders, wishlist, saved addresses, support tools, and a smoother shopping flow."
-      formTitle="Customer Sign Up"
-      formDescription="Set up your customer profile with the details needed for account access and future frontend features."
+      description="Sign up to unlock orders, wishlist, saved addresses, and support tools."
+      formTitle="Create Account"
+      formDescription="Fill in your details to get started."
       stats={[
         { label: "Checkout", value: "Smoother" },
         { label: "Wishlist", value: "Enabled" },
-        { label: "Account Hub", value: "Ready" },
+        { label: "Account", value: "Ready" },
       ]}
       highlights={customerHighlights}
-      alternateQuestion="Already have a customer account?"
-      alternateText="Sign in here"
+      alternateQuestion="Already have an account?"
+      alternateText="Sign in"
       alternateTo={redirectPath ? `/account/login?redirect=${encodeURIComponent(redirectPath)}` : "/account/login"}
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
         <label className="block">
           <span className="text-sm font-semibold text-slate-700">
             Full Name
@@ -83,7 +86,7 @@ function UserRegister() {
           <input
             type="text"
             name="name"
-            placeholder="Abhinav Singh"
+            placeholder="Your full name"
             required
             className={`${AUTH_FIELD_BASE} ${theme.focus}`}
             value={formData.name}
@@ -96,7 +99,7 @@ function UserRegister() {
           <input
             type="email"
             name="email"
-            placeholder="abhinav@gmail.com"
+            placeholder="you@example.com"
             required
             className={`${AUTH_FIELD_BASE} ${theme.focus}`}
             value={formData.email}
@@ -117,7 +120,7 @@ function UserRegister() {
           />
         </label>
 
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5">
           <label className="block">
             <span className="text-sm font-semibold text-slate-700">Age</span>
             <input
@@ -140,7 +143,7 @@ function UserRegister() {
               value={formData.gender}
               onChange={handleChange}
             >
-              <option value="">Select Gender</option>
+              <option value="">Select</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
               <option value="Other">Other</option>
@@ -148,14 +151,11 @@ function UserRegister() {
           </label>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-600">
-          Your customer signup uses the same structure you asked for: name, email, password, age, and gender.
-        </div>
-
         <button
-          className={`w-full rounded-2xl py-3.5 text-sm font-semibold transition ${theme.button}`}
+          disabled={isLoading}
+          className={`w-full rounded-2xl py-3.5 text-sm font-semibold transition disabled:opacity-60 ${theme.button}`}
         >
-          Create Customer Account
+          {isLoading ? "Creating account..." : "Create Account"}
         </button>
       </form>
     </AuthShell>

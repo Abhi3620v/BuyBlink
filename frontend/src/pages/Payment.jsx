@@ -280,31 +280,31 @@ function Payment() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(6,182,212,0.08),_transparent_30%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_55%,_#f8fafc_100%)] px-4 py-8 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(6,182,212,0.08),_transparent_30%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_55%,_#f8fafc_100%)] px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 px-6 py-8 text-white shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:px-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <section className="overflow-hidden rounded-2xl sm:rounded-[2rem] border border-slate-200 bg-slate-950 px-4 py-5 text-white shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:px-8 sm:py-8">
+          <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/80">
                 Payment Step
               </p>
-              <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
-                Choose how you want to pay.
+              <h1 className="mt-2 text-xl font-black tracking-tight sm:mt-3 sm:text-4xl">
+                Choose how to pay.
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+              <p className="mt-2 hidden max-w-2xl text-sm leading-7 text-slate-300 sm:block">
                 UPI and card payments now open a real Razorpay checkout, while COD
                 still places the order directly from BuyBlink.
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+              <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/[0.05] p-3 sm:p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   Order Total
                 </p>
-                <p className="mt-2 text-2xl font-bold">{formatCurrency(total)}</p>
+                <p className="mt-1 text-lg font-bold sm:mt-2 sm:text-2xl">{formatCurrency(total)}</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+              <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/[0.05] p-3 sm:p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   Buyer Email
                 </p>
@@ -312,7 +312,7 @@ function Payment() {
                   {shipping.email || customer?.email || "Not provided"}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+              <div className="col-span-2 rounded-xl sm:rounded-2xl border border-white/10 bg-white/[0.05] p-3 sm:p-4 lg:col-span-1">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   Security
                 </p>
