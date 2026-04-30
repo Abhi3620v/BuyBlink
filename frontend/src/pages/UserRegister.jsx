@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import AuthShell from "../components/AuthShell";
 import { AUTH_FIELD_BASE, AUTH_VARIANTS } from "../components/authTheme";
 import useCustomerAuth from "../context/useCustomerAuth";
-import { Heart, MapPin, ShoppingBag } from "lucide-react";
+import { AlertCircle, Heart, MapPin, ShoppingBag } from "lucide-react";
 
 const customerHighlights = [
   {
@@ -33,6 +33,7 @@ function UserRegister() {
   const redirectPath = searchParams.get("redirect") || "";
   const theme = AUTH_VARIANTS.customer;
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -46,16 +47,20 @@ function UserRegister() {
       ...currentForm,
       [event.target.name]: event.target.value,
     }));
+    setErrorMessage("");
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setErrorMessage("");
     setIsLoading(true);
 
-    const success = await registerCustomer(formData);
+    const result = await registerCustomer(formData);
 
-    if (success) {
+    if (result === true) {
       navigate(redirectPath || "/account");
+    } else {
+      setErrorMessage(result || "Unable to create customer account.");
     }
     setIsLoading(false);
   };
@@ -79,6 +84,16 @@ function UserRegister() {
       alternateTo={redirectPath ? `/account/login?redirect=${encodeURIComponent(redirectPath)}` : "/account/login"}
     >
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+        {errorMessage && (
+          <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <AlertCircle size={18} className="mt-0.5 shrink-0 text-rose-500" />
+            <div>
+              <p className="font-semibold">Registration failed</p>
+              <p className="mt-0.5 text-rose-600">{errorMessage}</p>
+            </div>
+          </div>
+        )}
+
         <label className="block">
           <span className="text-sm font-semibold text-slate-700">
             Full Name
@@ -88,7 +103,7 @@ function UserRegister() {
             name="name"
             placeholder="Your full name"
             required
-            className={`${AUTH_FIELD_BASE} ${theme.focus}`}
+            className={`${AUTH_FIELD_BASE} ${theme.focus} ${errorMessage ? "border-rose-300" : ""}`}
             value={formData.name}
             onChange={handleChange}
           />
@@ -101,7 +116,7 @@ function UserRegister() {
             name="email"
             placeholder="you@example.com"
             required
-            className={`${AUTH_FIELD_BASE} ${theme.focus}`}
+            className={`${AUTH_FIELD_BASE} ${theme.focus} ${errorMessage ? "border-rose-300" : ""}`}
             value={formData.email}
             onChange={handleChange}
           />
@@ -114,7 +129,7 @@ function UserRegister() {
             name="password"
             placeholder="Create a password"
             required
-            className={`${AUTH_FIELD_BASE} ${theme.focus}`}
+            className={`${AUTH_FIELD_BASE} ${theme.focus} ${errorMessage ? "border-rose-300" : ""}`}
             value={formData.password}
             onChange={handleChange}
           />
@@ -128,7 +143,7 @@ function UserRegister() {
               name="age"
               placeholder="21"
               required
-              className={`${AUTH_FIELD_BASE} ${theme.focus}`}
+              className={`${AUTH_FIELD_BASE} ${theme.focus} ${errorMessage ? "border-rose-300" : ""}`}
               value={formData.age}
               onChange={handleChange}
             />
@@ -139,7 +154,7 @@ function UserRegister() {
             <select
               name="gender"
               required
-              className={`${AUTH_FIELD_BASE} ${theme.focus}`}
+              className={`${AUTH_FIELD_BASE} ${theme.focus} ${errorMessage ? "border-rose-300" : ""}`}
               value={formData.gender}
               onChange={handleChange}
             >

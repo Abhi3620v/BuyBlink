@@ -50,8 +50,7 @@ function CustomerAuthProvider({ children }) {
       localStorage.setItem(CUSTOMER_KEY, JSON.stringify(response.data.user));
       return true;
     } catch (error) {
-      alert(error.message || "Unable to create customer account.");
-      return false;
+      return error.message || "Unable to create customer account.";
     }
   };
 
@@ -68,8 +67,7 @@ function CustomerAuthProvider({ children }) {
       localStorage.setItem(CUSTOMER_KEY, JSON.stringify(response.data.user));
       return true;
     } catch (error) {
-      alert(error.message || "Unable to sign in.");
-      return false;
+      return error.message || "Invalid email or password. Please try again.";
     }
   };
 

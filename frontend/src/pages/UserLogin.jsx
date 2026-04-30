@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import AuthShell from "../components/AuthShell";
 import { AUTH_FIELD_BASE, AUTH_VARIANTS } from "../components/authTheme";
 import useCustomerAuth from "../context/useCustomerAuth";
-import { Heart, LifeBuoy, Package } from "lucide-react";
+import { AlertCircle, Heart, LifeBuoy, Package } from "lucide-react";
 
 const customerHighlights = [
   {
@@ -35,15 +35,19 @@ function UserLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setErrorMessage("");
     setIsLoading(true);
 
-    const success = await loginCustomer(email, password);
+    const result = await loginCustomer(email, password);
 
-    if (success) {
+    if (result === true) {
       navigate(redirectPath || "/account");
+    } else {
+      setErrorMessage(result || "Invalid email or password.");
     }
     setIsLoading(false);
   };
@@ -67,10 +71,20 @@ function UserLogin() {
       alternateTo={redirectPath ? `/account/register?redirect=${encodeURIComponent(redirectPath)}` : "/account/register"}
     >
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-        {redirectPath && (
+        {redirectPath && !errorMessage && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             <p className="font-semibold">Please login to continue</p>
             <p className="mt-1 text-xs text-amber-700">Your cart items are saved and will sync after login.</p>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <AlertCircle size={18} className="mt-0.5 shrink-0 text-rose-500" />
+            <div>
+              <p className="font-semibold">Login failed</p>
+              <p className="mt-0.5 text-rose-600">{errorMessage}</p>
+            </div>
           </div>
         )}
 
@@ -80,9 +94,12 @@ function UserLogin() {
             type="email"
             placeholder="you@example.com"
             required
-            className={`${AUTH_FIELD_BASE} ${theme.focus}`}
+            className={`${AUTH_FIELD_BASE} ${theme.focus} ${errorMessage ? "border-rose-300" : ""}`}
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              setErrorMessage("");
+            }}
           />
         </label>
 
@@ -92,9 +109,12 @@ function UserLogin() {
             type="password"
             placeholder="Enter your password"
             required
-            className={`${AUTH_FIELD_BASE} ${theme.focus}`}
+            className={`${AUTH_FIELD_BASE} ${theme.focus} ${errorMessage ? "border-rose-300" : ""}`}
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setErrorMessage("");
+            }}
           />
         </label>
 
