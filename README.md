@@ -159,9 +159,4 @@ npx prisma validate
 - Route-level lazy loading is enabled to improve bundle delivery
 - Helper tests cover core formatting and support logic
 
-## Good Next Steps
 
-- Add end-to-end tests for checkout, support, and admin moderation flows
-- Add screenshots or a short walkthrough video to strengthen presentation
-- Wire live email/SMS/payment credentials for a full deployment demo
-- Expand automated tests around services and API routes
