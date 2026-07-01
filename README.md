@@ -1,41 +1,122 @@
-# BuyBlink
+# 🛒 BuyBlink
 
-BuyBlink is a full-stack dual-mode commerce platform built for both retail shoppers and wholesale buyers. The project combines a polished storefront, seller operations dashboard, customer account area, admin support workspace, and a real backend with Prisma-powered data models for products, orders, reviews, payments, notifications, and support flows.
+> **A sustainable full-stack multi-vendor e-commerce platform supporting both B2B and B2C commerce with retail & wholesale purchasing, role-based dashboards, secure authentication, and online payment integration.**
 
-## Why It Stands Out
+---
 
-- Dual retail and wholesale buying journeys inside one marketplace
-- Distinct customer, seller, and admin experiences
-- Premium storefront design instead of a plain CRUD demo
-- Real backend architecture with PostgreSQL + Prisma
-- Support tickets and live-style chat connected to orders
-- Reviews, payment records, email/SMS logging, notifications, and audit logs
+## 📖 Overview
 
-## Product Areas
+BuyBlink is a full-stack multi-vendor e-commerce platform designed to support both **Business-to-Business (B2B)** and **Business-to-Consumer (B2C)** commerce in a single marketplace.
 
-### Customer
+The platform enables customers to purchase products in **retail** or **wholesale** quantities while providing dedicated dashboards for **Customers**, **Sellers**, and **Administrators**. It is built with a scalable backend architecture using **Node.js, Express, PostgreSQL, and Prisma ORM**, with secure authentication using **JWT** and payment integration through **Razorpay**.
 
-- Landing page with live product and review highlights
-- Retail and wholesale catalog browsing
-- Product detail pages with pricing modes and reviews
-- Cart, checkout, payment, order history, wishlist, and account hub
-- Support tickets and chat for order-linked issue resolution
+---
 
-### Seller
+## ✨ Why BuyBlink?
 
-- Seller login and protected dashboard
-- Product create, update, archive, and inventory tracking
-- Order management with seller-side fulfilment status
-- Customer and revenue views across catalog modes
-- Store profile and settings management
+- 🌱 Sustainable multi-vendor marketplace
+- 🛍️ Supports both Retail & Wholesale purchasing
+- 🏢 Dual-mode B2B & B2C commerce
+- 👥 Dedicated dashboards for Customers, Sellers, and Admins
+- 🔐 Secure JWT-based authentication & authorization
+- 💳 Razorpay payment integration
+- ⭐ Product reviews and ratings
+- 📦 Inventory and order management
+- 🎫 Customer support ticket & chat system
+- 🔔 Notifications and activity logging
 
-### Admin
+---
 
-- Admin login route through seller auth flow
-- Support desk for tickets, chats, replies, and queue management
-- User moderation controls for account suspension/reactivation
+## 📸 Project Preview
 
-## Tech Stack
+# 📸 Project Preview
+
+## 🏠 Home Page
+
+<p align="center">
+  <img src="./docs/screenshots/home.png" alt="BuyBlink Home Page" width="900">
+</p>
+
+## 📦 Product Listing
+
+<p align="center">
+  <img src="Buyblink/docs/screenshots/product.png" alt="Product Listing" width="900">
+</p>
+
+## 👤 Customer Dashboard 
+
+<p align="center"> 
+  <img src="./docs/screenshots/user.png" alt="Customer Dashboard" width="900">
+</p>
+
+## 🏪 Seller Dashboard 
+
+<p align="center">
+  <img src="./docs/screenshots/seller.png" alt="Seller Dashboard" width="900">
+</p>
+
+## 🛠️ Admin Dashboard 
+
+<p align="center">
+  <img src="./docs/screenshots/admin.png" alt="Admin Dashboard" width="900">
+</p>
+
+---
+
+## 🚀 Live Demo
+
+> Deployment in progress.
+
+Frontend:
+
+Backend:
+
+---
+
+# ✨ Features
+
+## 👤 Customer
+
+- User Registration & Login
+- JWT Authentication
+- Browse Products
+- Retail & Wholesale Purchasing
+- Product Search & Filtering
+- Shopping Cart
+- Wishlist
+- Secure Razorpay Payments
+- Order History
+- Product Reviews & Ratings
+- Customer Dashboard
+- Support Ticket & Chat
+
+---
+
+## 🏪 Seller
+
+- Seller Registration & Login
+- Seller Dashboard
+- Product Management
+- Inventory Tracking
+- Order Management
+- Revenue Overview
+- Store Profile Management
+
+---
+
+## 🛠️ Admin
+
+- Admin Dashboard
+- Manage Users
+- Manage Sellers
+- Product Moderation
+- Support Ticket Management
+- Chat Support
+- User Suspension & Reactivation
+
+---
+
+## 🛠️ Tech Stack
 
 ### Frontend
 
@@ -43,56 +124,168 @@ BuyBlink is a full-stack dual-mode commerce platform built for both retail shopp
 - Vite
 - React Router 7
 - Tailwind CSS
-- Local cache helpers for smoother UX while syncing backend data
 
 ### Backend
 
 - Node.js
-- Express 5
+- Express.js 5
+
+### Database
+
 - PostgreSQL
 - Prisma ORM
-- JWT authentication
-- Zod validation
-- Razorpay integration hooks
-- SMTP and SMS provider configuration support
 
-## Repo Structure
+### Authentication
+
+- JWT (JSON Web Token)
+
+### Validation
+
+- Zod
+
+### Payments
+
+- Razorpay
+
+### Additional Services
+
+- SMTP Email Integration
+- SMS Provider Support
+
+### Version Control
+
+- Git
+- GitHub
+
+---
+
+# 🏗️ System Architecture
+
+```text
+                    React Frontend
+                           │
+                           ▼
+                Express REST API Server
+                           │
+         ┌─────────────────┼─────────────────┐
+         ▼                 ▼                 ▼
+ JWT Authentication   Business Logic     Razorpay API
+         │                 │
+         └──────────────┬──┘
+                        ▼
+                  Prisma ORM
+                        │
+                        ▼
+                 PostgreSQL Database
+```
+
+---
+
+# 🗄️ Database Design
+
+The application uses **PostgreSQL** with **Prisma ORM** for efficient relational data management.
+
+### Core Entities
+
+- Users
+- Sellers
+- Products
+- Categories
+- Orders
+- Payments
+- Reviews
+- Wishlist
+- Notifications
+- Support Tickets
+- Chat Messages
+
+---
+
+# 🔒 Security
+
+BuyBlink follows secure backend development practices including:
+
+- JWT Authentication
+- Role-Based Authorization
+- Protected API Routes
+- Password Hashing
+- Input Validation using Zod
+- Secure Payment Verification
+- Environment Variable Configuration
+
+---
+
+# 📂 Repository Structure
 
 ```text
 BuyBlink/
-  frontend/
-    src/
-      components/
-      context/
-      layout/
-      lib/
-      pages/
-  backend/
-    prisma/
-    src/
-      config/
-      lib/
-      middlewares/
-      modules/
-      routes/
-      scripts/
-      utils/
-    tests/
-  docs/
+│
+├── frontend/
+│   └── src/
+│       ├── components/     # Reusable UI components
+│       ├── context/        # Global state management
+│       ├── layout/         # Layout components
+│       ├── lib/            # Utility helpers
+│       └── pages/          # Application pages
+│
+├── backend/
+│   ├── prisma/             # Database schema & migrations
+│   ├── src/
+│   │   ├── config/         # Application configuration
+│   │   ├── lib/            # Shared libraries
+│   │   ├── middlewares/    # Authentication & middleware
+│   │   ├── modules/        # Business logic
+│   │   ├── routes/         # API endpoints
+│   │   ├── scripts/        # Utility scripts
+│   │   └── utils/          # Helper functions
+│   │
+│   └── tests/
+│
+├── docs/
+└── README.md
 ```
 
-## Demo Credentials
+---
 
-Running the backend seed creates these accounts:
+# 👤 Demo Credentials
 
-- Admin: `admin@buyblink.com` / `buyblink-admin`
-- Seed seller: `platform@buyblink.com` / `buyblink-platform`
+Running the backend seed creates the following accounts.
 
-Customers can register from the UI.
+### Admin
 
-## Getting Started
+```text
+Email:
+admin@buyblink.com
 
-### 1. Frontend
+Password:
+buyblink-admin
+```
+
+### Seller
+
+```text
+Email:
+platform@buyblink.com
+
+Password:
+buyblink-platform
+```
+
+Customers can register directly from the application.
+
+---
+
+# 🚀 Getting Started
+
+## Clone Repository
+
+```bash
+git clone https://github.com/Abhi3620v/BuyBlink.git
+```
+
+---
+
+## Frontend Setup
 
 ```bash
 cd frontend
@@ -100,63 +293,121 @@ npm install
 npm run dev
 ```
 
-The frontend runs on `http://localhost:5173` by default.
+Runs on:
 
-### 2. Backend
+```
+http://localhost:5173
+```
+
+---
+
+## Backend Setup
 
 ```bash
 cd backend
 npm install
+
 cp .env.example .env
+
 npm run prisma:generate
+
 npm run prisma:migrate
+
 npm run prisma:seed
+
 npm run dev
 ```
 
-The backend runs on `http://localhost:4000` by default.
+Runs on:
 
-## Environment Setup
+```
+http://localhost:4000
+```
 
-At minimum, configure:
+---
+
+# ⚙️ Environment Variables
+
+Configure the following variables.
 
 ```env
 DATABASE_URL=
+
 JWT_SECRET=
+
 CLIENT_URL=http://localhost:5173
+
+RAZORPAY_KEY_ID=
+
+RAZORPAY_SECRET=
 ```
 
-Optional live integrations are supported for:
+Optional integrations:
 
-- Razorpay
-- SMTP email
+- SMTP Email
 - Twilio SMS
 
-See [backend/README.md](./backend/README.md) for backend-specific setup details.
+---
 
-## Verification Commands
+# ✅ Verification
 
-### Frontend
+## Frontend
 
 ```bash
-cd frontend
 npm run lint
 npm run build
 ```
 
-### Backend
+## Backend
 
 ```bash
-cd backend
 npm test
+
 npx prisma validate
 ```
 
-## Current Highlights
+---
 
-- Production build succeeds
-- Prisma schema validates cleanly
-- Route-level lazy loading is enabled to improve bundle delivery
-- Helper tests cover core formatting and support logic
+# 💡 Technical Highlights
+
+- Full-stack architecture with React + Express
+- PostgreSQL database using Prisma ORM
+- Modular backend architecture
+- Route-level lazy loading
+- Secure JWT authentication
+- Retail & Wholesale purchasing workflows
+- Multi-vendor marketplace design
+- Razorpay payment integration
+- Customer support ticketing system
+- Notification & activity logging
+
+---
+
+# 🚀 Future Enhancements
+
+- AI-powered product recommendations
+- Real-time notifications using WebSockets
+- Sales analytics dashboard
+- Docker containerization
+- CI/CD pipeline
+- Multi-language support
+- Product recommendation engine
+- Advanced search with Elasticsearch
+
+---
+
+# 👨‍💻 Author
+
+**Abhishek Yadav**
+
+GitHub: https://github.com/Abhi3620v
+
+LinkedIn: https://www.linkedin.com/in/abhishekyadav4653/
+
+---
+
+# ⭐ Support
+
+If you found this project interesting, consider giving it a ⭐ on GitHub.
 
 
