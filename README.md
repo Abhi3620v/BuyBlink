@@ -34,42 +34,40 @@ The platform enables customers to purchase products in **retail** or **wholesale
 ## 🏠 Home Page
 
 <p align="center">
-  <img src="./docs/screenshots/home.png" alt="BuyBlink Home Page" width="900">
+  <img src="./docs/screenshots/home.png.png" alt="BuyBlink Home Page" width="900">
 </p>
 
 ## 📦 Product Listing
 
 <p align="center">
-  <img src="Buyblink/docs/screenshots/product.png" alt="Product Listing" width="900">
+  <img src="./docs/screenshots/product.png.png" alt="Product Listing" width="900">
 </p>
 
 ## 👤 Customer Dashboard 
 
 <p align="center"> 
-  <img src="./docs/screenshots/user.png" alt="Customer Dashboard" width="900">
+  <img src="./docs/screenshots/user.png.png" alt="Customer Dashboard" width="900">
 </p>
 
 ## 🏪 Seller Dashboard 
 
 <p align="center">
-  <img src="./docs/screenshots/seller.png" alt="Seller Dashboard" width="900">
+  <img src="./docs/screenshots/seller.png.png" alt="Seller Dashboard" width="900">
 </p>
 
 ## 🛠️ Admin Dashboard 
 
 <p align="center">
-  <img src="./docs/screenshots/admin.png" alt="Admin Dashboard" width="900">
+  <img src="./docs/screenshots/admin.png.png" alt="Admin Dashboard" width="900">
 </p>
 
 ---
 
 ## 🚀 Live Demo
 
-> Deployment in progress.
+Frontend:https://buy-blink.vercel.app/
 
-Frontend:
-
-Backend:
+Backend:https://buyblink-rnvr.onrender.com
 
 ---
 
@@ -160,30 +158,23 @@ Backend:
 ---
 
 # 🏗️ System Architecture
+<p align="center">
+  <img src="docs/screenshots/System_Architecture.png.png"
+       alt="BuyBlink System Architecture"
+       width="900">
+</p>
 
-```text
-                    React Frontend
-                           │
-                           ▼
-                Express REST API Server
-                           │
-         ┌─────────────────┼─────────────────┐
-         ▼                 ▼                 ▼
- JWT Authentication   Business Logic     Razorpay API
-         │                 │
-         └──────────────┬──┘
-                        ▼
-                  Prisma ORM
-                        │
-                        ▼
-                 PostgreSQL Database
-```
-
----
+BuyBlink follows a modular client-server architecture where the React frontend communicates with a RESTful Express backend. Authentication is handled using JWT, business logic is organized into modules, PostgreSQL serves as the relational database through Prisma ORM, and Razorpay powers secure payment processing.
 
 # 🗄️ Database Design
 
-The application uses **PostgreSQL** with **Prisma ORM** for efficient relational data management.
+<p align="center">
+  <img src="docs/screenshots/ER_Diagram.png"
+       alt="BuyBlink ER Diagram"
+       width="900">
+</p>
+
+The PostgreSQL database is designed using Prisma ORM and models the core entities of the marketplace, including users, sellers, products, categories, orders, payments, reviews, notifications, support tickets, and chat messages.
 
 ### Core Entities
 
